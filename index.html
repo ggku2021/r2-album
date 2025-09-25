@@ -1,11 +1,27 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>我的外贸相册</title>
-  </head>
-  <body>
-    <h1>欢迎来到我的外贸相册</h1>
-    <p>这里以后会放图片列表。</p>
-  </body>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>外贸产品相册</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lightgallery-bundle.min.css">
+</head>
+<body>
+  <h1>我的产品相册</h1>
+  <div id="gallery">
+    <a href="images/shoes1.jpg">
+      <img src="images/shoes1.jpg" width="200">
+    </a>
+    <a href="images/shoes2.jpg">
+      <img src="images/shoes2.jpg" width="200">
+    </a>
+    <a href="images/shoes3.jpg">
+      <img src="images/shoes3.jpg" width="200">
+    </a>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/lightgallery.umd.min.js"></script>
+  <script>
+    lightGallery(document.getElementById('gallery'));
+  </script>
+</body>
 </html>
