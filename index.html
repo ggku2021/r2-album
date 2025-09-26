@@ -3,26 +3,119 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>相册 / My Album</title>
+<title>我的相册 | My Gallery</title>
 <style>
-:root{--gap:10px;--bg:#0f1724;--card:#0b1220;--text:#e6eef8;--folder:#3b82f6}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC","Noto Sans CJK SC";background:var(--bg);color:var(--text);transition:background 0.3s}
-header{padding:16px;text-align:center}
-header h1{margin:0;font-size:1.2rem}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--gap);padding:12px;max-width:1200px;margin:0 auto;transition:opacity 0.3s}
-.thumb{display:block;overflow:hidden;border-radius:8px;background:var(--card);padding:4px;text-align:center;cursor:pointer;position:relative;transition:transform 0.2s, box-shadow 0.2s}
-.thumb img{width:100%;height:160px;object-fit:cover;border-radius:6px;display:block;transition:transform .25s;opacity:0;transition:opacity 0.3s}
-.thumb:hover{transform: translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.2)}
-.thumb:hover img{transform:scale(1.03)}
-.caption{font-size:0.85rem;padding:6px 4px;text-align:center;color:#cfe6ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 基础样式变量 */
+:root{
+  --gap: 12px;
+  --bg-color: #0f1724;
+  --card-bg: #0b1220;
+  --text-color: #e6eef8;
+  --light-text: #9fb5d9;
+  --folder-color: #3b82f6;
+  --hover-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
 
-/* 文件夹样式增强 */
-.thumb.folder::after{
+/* 全局样式重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "PingFang SC", "Noto Sans CJK SC";
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.4;
+}
+
+/* 头部样式 */
+header {
+  padding: 20px 16px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: var(--gap);
+}
+header h1 {
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+header .tips {
+  font-size: 0.85rem;
+  color: var(--light-text);
+  margin-bottom: 8px;
+}
+#backBtn {
+  font-size: 0.85rem;
+  color: var(--folder-color);
+  cursor: pointer;
+  display: none;
+  margin-top: 4px;
+  transition: color 0.2s;
+}
+#backBtn:hover {
+  color: #60a5fa;
+}
+
+/* 面包屑导航 */
+.breadcrumb {
+  font-size: 0.8rem;
+  color: var(--light-text);
+  margin: 0 16px 12px;
+  padding: 8px 12px;
+  background-color: var(--card-bg);
+  border-radius: 6px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.breadcrumb .item {
+  color: var(--light-text);
+  text-decoration: none;
+  margin: 0 4px;
+}
+.breadcrumb .item:hover {
+  color: #60a5fa;
+  text-decoration: underline;
+}
+.breadcrumb .current {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+/* 相册网格布局 */
+.gallery-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--gap);
+  padding: 0 16px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* 图片/文件夹卡片 */
+.media-card {
+  display: block;
+  background-color: var(--card-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.media-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--hover-shadow);
+}
+/* 文件夹卡片特殊标记 */
+.media-card.folder::after {
   content: "📁";
   position: absolute;
   top: 8px;
   right: 8px;
-  background: rgba(0,0,0,0.3);
+  background: rgba(0,0,0,0.4);
   border-radius: 4px;
   width: 24px;
   height: 24px;
@@ -30,179 +123,294 @@ header h1{margin:0;font-size:1.2rem}
   align-items: center;
   justify-content: center;
   font-size: 14px;
+  z-index: 1;
 }
-.thumb.folder img{filter: brightness(0.8);}
+.media-card.folder {
+  position: relative;
+}
+.media-card.folder img {
+  filter: brightness(0.8);
+}
 
-/* 面包屑导航 */
-.breadcrumb{
-  font-size:0.8rem;color:#9fb5d9;margin:6px 0 12px;
+/* 缩略图样式 */
+.media-card img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s;
+}
+.media-card:hover img {
+  transform: scale(1.05);
+}
+
+/* 标题文字 */
+.media-title {
+  font-size: 0.85rem;
+  padding: 8px 6px;
   text-align: center;
+  color: var(--light-text);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 0 12px;
 }
-.breadcrumb .breadcrumb-item{color:#9fb5d9;text-decoration:none;margin:0 4px;}
-.breadcrumb .breadcrumb-item:hover{color:#bfdbfe;text-decoration:underline;}
-.breadcrumb .breadcrumb-current{color:#e6eef8;font-weight:500;}
-
-/* Lightbox 大图预览 */
-.lb{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.85);z-index:999;visibility:hidden;opacity:0;transition:opacity .18s}
-.lb.show{visibility:visible;opacity:1}
-.lb img{max-width:94vw;max-height:82vh;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.6);transition:opacity 0.3s;opacity:0}
-.lb .info{position:fixed;left:16px;bottom:16px;color:#dfeefe;font-size:0.95rem;background:rgba(0,0,0,0.5);padding:4px 8px;border-radius:4px}
-.btn{position:fixed;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.4);border:0;color:#fff;font-size:2rem;padding:6px 10px;border-radius:6px;cursor:pointer;transition:background 0.2s}
-.btn:hover{background:rgba(0,0,0,.6)}
-.prev{left:10px} .next{right:10px}
-.close{position:fixed;top:12px;right:12px;background:transparent;border:0;color:#fff;font-size:28px;cursor:pointer;transition:transform 0.2s}
-.close:hover{transform:scale(1.1)}
 
 /* 加载状态 */
-.loading{text-align:center;padding:40px 0;color:#9fb5d9;}
-.loading::after{
+.loading {
+  text-align: center;
+  padding: 60px 0;
+  color: var(--light-text);
+  font-size: 0.95rem;
+}
+.loading::after {
   content: "";
   display: inline-block;
   width: 20px;
   height: 20px;
   border: 3px solid rgba(255,255,255,0.3);
   border-radius: 50%;
-  border-top-color: white;
+  border-top-color: var(--folder-color);
   animation: spin 1s ease-in-out infinite;
   margin-left: 8px;
   vertical-align: middle;
 }
-@keyframes spin {to { transform: rotate(360deg); }}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 /* 图片加载失败样式 */
-.thumb img.error{
-  background: #1e293b;
-  content: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzE0MTQxNCIgZD0iTTEyIDJDMTEuNCAyIDExIDEuNiAxMSAxLjFDMTEgMC41IDEwLjUgMCAxMCAwQzkuNSAwIDkgMC41IDkgMS4xQzkgMS42IDguNiAyIDggMkM0LjcgMiAyIDQuNyAyIDhDMiAxMS4zIDQuNyAxNCA4IDE0QzExLjMgMTQgMTQgMTEuMyAxNCA4QzE0IDQuNyAxMS4zIDIgOCAyTTE4IDhDMThgNiA2IDYgNiA2IDZoLTZDMi43IDggMCAxMC43IDAgMTRDMCAxNy4zIDIuNyAyMCA2IDIwSDIwQzIzLjMgMjAgMjYgMTcuMyAyNiAxNEMyNiAxMC43IDIzLjMgOCAyMCA4WiIvPjxwYXRoIGZpbGw9IiNmOGZmZmYiIGQ9Ik0xMiAxNUMyMS4zIDcgMTYgMTcgMTIgMTdDOC4yIDE3IDMuNyAxNCAzLjcgMTRDMy43IDE0IDAgMTcgNSAxNUMxMC4xIDE1IDEyIDE1IDEyIDE1WiIvPjxwYXRoIGZpbGw9IiNmNWY1ZjUiIGQ9Ik0xMiAxM0g5VjExSDEyVjEzWiIvPjxwYXRoIGZpbGw9IiNmNWY1ZjUiIGQ9Ik0xNCAxMUgxNlY5SDE0VjExWiIvPjwvc3ZnPg==');
-  width: 60px;
-  height: 60px;
-  margin: 50px auto;
-  object-fit: contain;
+.img-error {
+  background-color: #1e293b;
+  width: 100%;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--light-text);
+  font-size: 24px;
+}
+
+/* 大图预览（Lightbox） */
+.lightbox {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.lightbox.show {
+  visibility: visible;
+  opacity: 1;
+}
+.lightbox img {
+  max-width: 92vw;
+  max-height: 85vh;
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  transition: opacity 0.3s;
+  opacity: 0;
+}
+.lightbox.show img {
+  opacity: 1;
+}
+
+/* 预览控制按钮 */
+.lb-btn {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(0,0,0,0.5);
+  border: none;
+  color: white;
+  font-size: 2rem;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  z-index: 10000;
+}
+.lb-btn:hover {
+  background-color: rgba(0,0,0,0.7);
+}
+.prev-btn {
+  left: 20px;
+}
+.next-btn {
+  right: 20px;
+}
+.close-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: transparent;
+  border: none;
+  color: white;
+  font-size: 2rem;
+  cursor: pointer;
+  z-index: 10000;
+  transition: transform 0.2s;
+}
+.close-btn:hover {
+  transform: scale(1.1);
+}
+
+/* 预览图片标题 */
+.lb-caption {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0,0,0,0.6);
+  color: white;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: 4px;
+  z-index: 10000;
 }
 
 /* 移动端适配 */
-@media (max-width:480px){ 
-  .thumb img{height:120px} 
-  .grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));padding:8px}
-  .btn{font-size:1.5rem;padding:4px 8px}
-  .lb .info{left:8px;bottom:8px;font-size:0.85rem}
+@media (max-width: 480px) {
+  .gallery-container {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    padding: 0 8px 16px;
+  }
+  .media-card img {
+    height: 120px;
+  }
+  .img-error {
+    height: 120px;
+  }
+  .lb-btn {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+  }
+  .prev-btn {
+    left: 10px;
+  }
+  .next-btn {
+    right: 10px;
+  }
+  .close-btn {
+    font-size: 1.8rem;
+    top: 15px;
+    right: 15px;
+  }
+  .lb-caption {
+    font-size: 0.85rem;
+    bottom: 15px;
+    padding: 6px 12px;
+  }
 }
 </style>
 </head>
 <body>
+<!-- 头部 -->
 <header>
-  <h1>相册 / Gallery</h1>
+  <h1>我的相册 | My Gallery</h1>
   <div class="breadcrumb" id="breadcrumb">
-    <span class="breadcrumb-current">首页</span>
+    <span class="current">首页</span>
   </div>
-  <div style="font-size:0.85rem;color:#9fb5d9;margin-top:6px">支持多层文件夹浏览 | 点击图片查看大图（键盘 ← → / Esc 支持）</div>
-  <div id="backBtn" style="font-size:0.85rem;color:#93c5fd;margin-top:6px;display:none;cursor:pointer">← 返回上一级</div>
+  <div class="tips">支持多层文件夹浏览 | 点击图片查看大图（键盘 ← → / Esc 支持）</div>
+  <div id="backBtn">← 返回上一级</div>
 </header>
 
-<main>
-  <div id="gallery" class="grid" aria-live="polite">
-    <div class="loading">加载中</div>
-  </div>
+<!-- 相册容器 -->
+<main class="gallery-container" id="galleryContainer">
+  <div class="loading">加载中</div>
 </main>
 
-<!-- Lightbox 大图预览 -->
-<div id="lightbox" class="lb" role="dialog" aria-hidden="true">
-  <button id="closeBtn" class="close" aria-label="关闭">✕</button>
-  <button id="prevBtn" class="btn prev" aria-label="上一张">‹</button>
-  <img id="lbImg" src="" alt="" style="opacity:0">
-  <button id="nextBtn" class="btn next" aria-label="下一张">›</button>
-  <div id="lbCaption" class="info"></div>
+<!-- 大图预览组件 -->
+<div class="lightbox" id="lightbox">
+  <button class="lb-btn prev-btn" id="prevBtn" aria-label="上一张">←</button>
+  <img src="" alt="" id="lbImage">
+  <button class="lb-btn next-btn" id="nextBtn" aria-label="下一张">→</button>
+  <button class="close-btn" id="closeBtn" aria-label="关闭">×</button>
+  <div class="lb-caption" id="lbCaption"></div>
 </div>
 
 <script>
-const jsonPath = 'images.json'; // 指向自动生成的图片结构文件
-let rootImages = []; // 根目录图片
-let folders = []; // 一级文件夹（含嵌套子文件夹）
-let currentFolderData = null; // 当前打开的文件夹数据（含图片和子文件夹）
+// 核心变量
+const jsonPath = 'images.json'; // 指向Actions生成的图片结构文件
+let currentFolder = null; // 当前打开的文件夹数据
 let currentImages = []; // 当前显示的图片列表
-let currentIndex = 0; // 大图预览当前索引
 let navigationHistory = []; // 导航历史（用于面包屑和回退）
+let currentImgIndex = 0; // 大图预览当前索引
 
-// 初始化：加载 images.json 并渲染相册
+// DOM元素
+const galleryContainer = document.getElementById('galleryContainer');
+const breadcrumb = document.getElementById('breadcrumb');
+const backBtn = document.getElementById('backBtn');
+const lightbox = document.getElementById('lightbox');
+const lbImage = document.getElementById('lbImage');
+const lbCaption = document.getElementById('lbCaption');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const closeBtn = document.getElementById('closeBtn');
+
+// 初始化：加载图片数据并渲染相册
 async function initGallery() {
   try {
-    const res = await fetch(jsonPath, { cache: 'no-store' }); // 禁用缓存，确保加载最新数据
-    if (!res.ok) throw new Error(`读取失败：${res.status} ${res.statusText}`);
+    // 加载images.json（禁用缓存，确保最新）
+    const response = await fetch(jsonPath, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`加载失败：${response.status} ${response.statusText}`);
     
-    const data = await res.json();
-    rootImages = data.root || [];
-    folders = data.folders || [];
-    
-    renderGallery(); // 渲染相册页面
-  } catch (e) {
-    console.error('相册加载失败：', e);
-    document.getElementById('gallery').innerHTML = `
-      <div style="padding:20px;color:#f88;text-align:center">
-        载入图片失败！<br>
-        请检查 images.json 是否存在或格式正确<br>
-        错误信息：${e.message}
+    const mediaData = await response.json();
+    // 渲染首页（根目录图片+文件夹）
+    renderGallery(mediaData);
+  } catch (error) {
+    console.error('相册初始化失败：', error);
+    galleryContainer.innerHTML = `
+      <div style="padding:40px;text-align:center;color:#f88">
+        相册加载失败<br>
+        错误原因：${error.message}<br>
+        请检查GitHub Actions是否成功生成images.json
       </div>
     `;
   }
 }
 
-// 渲染相册页面（核心逻辑）
-function renderGallery() {
-  const galleryContainer = document.getElementById('gallery');
+// 渲染相册（支持首页和文件夹内页面）
+function renderGallery(mediaData) {
   galleryContainer.innerHTML = '<div class="loading">加载中</div>';
-  galleryContainer.style.opacity = '0'; // 淡入效果准备
-
-  // 区分“首页”和“文件夹内页面”
-  if (!currentFolderData) {
-    // 首页：渲染根目录图片 + 一级文件夹
-    let galleryHtml = '';
+  
+  // 区分“首页”和“文件夹内”
+  if (!currentFolder) {
+    // 首页：根目录的图片和文件夹（mediaData是整个images.json数组）
+    const rootImages = mediaData.filter(item => item.type === 'image');
+    const rootFolders = mediaData.filter(item => item.type === 'folder');
     
-    // 1. 渲染根目录图片
-    if (rootImages.length > 0) {
-      rootImages.forEach((img, index) => {
-        galleryHtml += `
-          <a href="#" class="thumb" data-type="root-img" data-index="${index}">
-            <img src="${img.url}" alt="${img.title}" 
-                 onload="this.style.opacity='1'" 
-                 onerror="this.classList.add('error');this.alt='图片加载失败'">
-            <div class="caption">${img.title}</div>
-          </a>
-        `;
-      });
-    }
-
-    // 2. 渲染一级文件夹
-    if (folders.length > 0) {
-      folders.forEach(folder => {
-        galleryHtml += `
-          <a href="#" class="thumb folder" data-type="folder" data-folder='${JSON.stringify(folder)}'>
-            <img src="${folder.cover || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzNiODJmNiIgZD0iTTEyIDJDMTEuNCAyIDExIDEuNiAxMSAxLjFDMTEgMC41IDEwLjUgMCAxMCAwQzkuNSAwIDkgMC41IDkgMS4xQzkgMS42IDguNiAyIDggMkM0LjcgMiAyIDQuNyAyIDhDMiAxMS4zIDQuNyAxNCA4IDE0QzExLjMgMTQgMTQgMTEuMyAxNCA4QzE0IDQuNyAxMS4zIDIgOCAyTTE4IDhDMTh2MTBDMTggMTguOCAxNy4yIDIwIDE2IDIwSDhDMi4yIDIwIDIgMTguOCAyIDE4VjhDMiA3LjIgMi44IDYgNCA2SDIwQzIxLjIgNiAyMiA2LjIgMjIgOFoiLz48L3N2Zz4='}" 
-                 alt="${folder.folder}" 
-                 onload="this.style.opacity='1'" 
-                 onerror="this.classList.add('error');this.alt='封面加载失败'">
-            <div class="caption">${folder.folder}</div>
-          </a>
-        `;
-      });
-    }
-
-    // 无图片和文件夹时显示提示
-    if (galleryHtml === '') {
-      galleryHtml = '<div style="padding:40px;color:#9fb5d9;text-align:center">暂无图片，请先上传图片到 img 目录</div>';
-    }
-
-    galleryContainer.innerHTML = galleryHtml;
-    document.getElementById('backBtn').style.display = 'none'; // 首页隐藏“返回”按钮
-  } else {
-    // 文件夹内页面：渲染当前文件夹图片 + 嵌套子文件夹
     let galleryHtml = '';
-    
-    // 1. 渲染嵌套子文件夹（如有）
-    if (currentFolderData.subfolders && currentFolderData.subfolders.length > 0) {
-      currentFolderData.subfolders.forEach(subfolder => {
-        galleryHtml += `
-          <a href="#" class="thumb folder" data-type="folder" data-folder='${JSON.stringify(subfolder)}'>
-            <img src="${subfolder.cover || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzNiODJmNiIgZD0iTTEyIDJDMTEuNCAyIDExIDEuNiAxMSAxLjFDMTEgMC41IDEwLjUgMCAxMCAwQzkuNSAwIDkgMC41IDkgMS4xQzkgMS42IDguNiAyIDggMkM0LjcgMiAyIDQuNyAyIDhDMiAxMS4zIDQuNyAxNCA4IDE0QzExLjMgMTQgMTQgMTEuMyAx
+    // 渲染根目录图片
+    rootImages.forEach((img, index) => {
+      galleryHtml += `
+        <a class="media-card" data-type="image" data-index="${index}">
+          <img src="${img.url}" alt="${img.title}" 
+               onload="this.style.opacity='1'" 
+               onerror="this.replaceWith('<div class=\'img-error\'>🖼️</div>')"
+               style="opacity:0;transition:opacity 0.3s">
+          <div class="media-title">${img.title}</div>
+        </a>
+      `;
+    });
+    // 渲染根目录文件夹
+    rootFolders.forEach(folder => {
+      galleryHtml += `
+        <a class="media-card folder" data-type="folder" data-folder='${JSON.stringify(folder)}'>
+          <img src="${folder.cover || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzNiODJmNiIgZD0iTTEyIDJDMTEuNCAyIDExIDEuNiAxMSAxLjFDMTEgMC41IDEwLjUgMCAxMCAwQzkuNSAwIDkgMC41IDkgMS4xQzkgMS42IDguNiAyIDggMkM0LjcgMiAyIDQuNyAyIDhDMiAxMS4zIDQuNyAxNCA4IDE0QzExLjMgMTQgMTQgMTEuMyAxNCA4QzE0IDQuNyAxMS4zIDIgOCAyTTE4IDhDMTh2MTBDMTggMTguOCAxNy4yIDIwIDE2IDIwSDhDMi4yIDIwIDIgMTguOCAyIDE4VjhDMiA3LjIgMi44IDYgNCA2SDIwQzIxLjIgNiAyMiA2LjIgMjIgOFoiLz48L3N2Zz4='}" 
+               alt="${folder.title}" 
+               onload="this.style.opacity='1'" 
+               onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzNiODJmNiIgZD0iTTEyIDJDMTEuNCAyIDExIDEuNiAxMSAxLjFDMTEgMC41IDEwLjUgMCAxMCAwQzkuNSAwIDkgMC41IDkgMS4xQzkgMS42IDguNiAyIDggMkM0LjcgMiAyIDQuNyAyIDhDMiAxMS4zIDQuNyAxNCA4IDE0QzExLjMgMTQgMTQgMTEuMyAxNCA4QzE0IDQuNyAxMS4zIDIgOCAyTTE4IDhDMTh2MTBDMTggMTguOCAxNy4yIDIwIDE2IDIwSDhDMi4yIDIwIDIgMTguOCAyIDE4VjhDMiA
