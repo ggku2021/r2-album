@@ -18,33 +18,42 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Generate images.json recursively
+      - name: Generate images.json with folders and cover
         run: |
           node -e "
           const fs = require('fs');
           const path = require('path');
 
-          function getImages(dir) {
-            let results = [];
-            fs.readdirSync(dir).forEach(file => {
-              const fullPath = path.join(dir, file);
-              const stat = fs.statSync(fullPath);
-              if (stat && stat.isDirectory()) {
-                results = results.concat(getImages(fullPath)); // 递归扫描子文件夹
-              } else if (/\.(jpg|jpeg|png|gif)$/i.test(file)) {
-                results.push({
-                  filename: file,
-                  url: 'https://raw.githubusercontent.com/ggku2021/r2-album/main/' + fullPath.replace(/\\/g,'/'),
-                  title: file
+          function getFoldersImages(dir) {
+            let folders = [];
+            fs.readdirSync(dir).forEach(folderName => {
+              const folderPath = path.join(dir, folderName);
+              if (fs.statSync(folderPath).isDirectory()) {
+                const images = [];
+                fs.readdirSync(folderPath).forEach(file => {
+                  if (/\.(jpg|jpeg|png|gif)$/i.test(file)) {
+                    images.push({
+                      filename: file,
+                      url: 'https://raw.githubusercontent.com/ggku2021/r2-album/main/' + path.join(folderPath, file).replace(/\\/g,'/'),
+                      title: file
+                    });
+                  }
                 });
+                if (images.length > 0) {
+                  folders.push({
+                    folder: folderName,
+                    cover: images[0].url,
+                    images: images
+                  });
+                }
               }
             });
-            return results;
+            return folders;
           }
 
-          const images = getImages('img');
-          fs.writeFileSync('images.json', JSON.stringify(images, null, 2));
-          console.log('images.json generated with', images.length, 'images');
+          const result = getFoldersImages('img');
+          fs.writeFileSync('images.json', JSON.stringify(result, null, 2));
+          console.log('images.json generated with', result.length, 'folders');
           "
 
       - name: Commit and push images.json
