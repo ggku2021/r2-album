@@ -1,52 +1,55 @@
-name: Generate images.json from img folder
+name: Generate images.json
 
 on:
   push:
     paths:
       - 'img/**'
 
-permissions:
-  contents: write
-
 jobs:
-  generate:
+  build:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: Generate images.json
+      - name: Generate images.json recursively
         run: |
-          node - <<'NODE'
+          node -e "
           const fs = require('fs');
-          const path = 'img';
-          const repo = process.env.GITHUB_REPOSITORY;
-          const branch = process.env.GITHUB_REF.replace('refs/heads/', '');
-          
-          if (!fs.existsSync(path)) {
-            console.log('img folder does not exist.');
-            process.exit(0);
+          const path = require('path');
+
+          function getImages(dir) {
+            let results = [];
+            fs.readdirSync(dir).forEach(file => {
+              const fullPath = path.join(dir, file);
+              const stat = fs.statSync(fullPath);
+              if (stat.isDirectory()) {
+                results = results.concat(getImages(fullPath)); // 递归扫描子文件夹
+              } else if (/\.(jpg|jpeg|png|gif)$/i.test(file)) {
+                results.push({
+                  filename: file,
+                  url: 'https://raw.githubusercontent.com/ggku2021/r2-album/main/' + fullPath.replace(/\\/g,'/'),
+                  title: file
+                });
+              }
+            });
+            return results;
           }
 
-          const files = fs.readdirSync(path).filter(f => !f.startsWith('.') && !f.startsWith('_'));
-          const items = files.map(f => ({
-            filename: f,
-            url: `https://cdn.jsdelivr.net/gh/${repo}@${branch}/img/${encodeURIComponent(f)}`,
-            title: f
-          }));
-
-          fs.writeFileSync('images.json', JSON.stringify(items, null, 2));
-          console.log(`Generated images.json with ${items.length} items`);
-          NODE
-
-      - name: Commit & push images.json if changed
+          const images = getImages('img');
+          fs.writeFileSync('images.json', JSON.stringify(images, null, 2));
+          console.log('images.json generated with', images.length, 'images');
+          "
+      - name: Commit and push images.json
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "ggku2021"
+          git config user.email "ggku@qq.com"
           git add images.json
-          git diff --staged --quiet || (git commit -m "chore: update images.json" && git push)
+          git commit -m '自动生成 images.json' || echo 'No changes to commit'
+          git push origin main
