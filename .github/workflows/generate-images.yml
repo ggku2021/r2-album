@@ -1,9 +1,9 @@
-name: Generate images.json
+name: Generate images.json from img folder
 
 on:
   push:
     paths:
-      - 'images/**'
+      - 'img/**'
 
 permissions:
   contents: write
@@ -20,28 +20,31 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Determine branch name
-        run: echo "BRANCH=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
-
       - name: Generate images.json
         run: |
           node - <<'NODE'
           const fs = require('fs');
-          const dir = 'img';
+          const path = 'img';
           const repo = process.env.GITHUB_REPOSITORY;
-          const branch = process.env.BRANCH || 'main';
-          const out = 'images.json';
-          const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => !f.startsWith('.') && !f.startsWith('_')) : [];
-          const items = files.map(f => {
-            const enc = encodeURIComponent(f);
-            const url = `https://cdn.jsdelivr.net/gh/${repo}@${branch}/images/${enc}`;
-            return { filename: f, url, title: f };
-          });
-          fs.writeFileSync(out, JSON.stringify(items, null, 2));
-          console.log('Generated', out, 'with', items.length, 'items');
+          const branch = process.env.GITHUB_REF.replace('refs/heads/', '');
+          
+          if (!fs.existsSync(path)) {
+            console.log('img folder does not exist.');
+            process.exit(0);
+          }
+
+          const files = fs.readdirSync(path).filter(f => !f.startsWith('.') && !f.startsWith('_'));
+          const items = files.map(f => ({
+            filename: f,
+            url: `https://cdn.jsdelivr.net/gh/${repo}@${branch}/img/${encodeURIComponent(f)}`,
+            title: f
+          }));
+
+          fs.writeFileSync('images.json', JSON.stringify(items, null, 2));
+          console.log(`Generated images.json with ${items.length} items`);
           NODE
 
-      - name: Commit & push images.json (if changed)
+      - name: Commit & push images.json if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
