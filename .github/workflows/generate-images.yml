@@ -29,7 +29,7 @@ jobs:
             fs.readdirSync(dir).forEach(file => {
               const fullPath = path.join(dir, file);
               const stat = fs.statSync(fullPath);
-              if (stat.isDirectory()) {
+              if (stat && stat.isDirectory()) {
                 results = results.concat(getImages(fullPath)); // 递归扫描子文件夹
               } else if (/\.(jpg|jpeg|png|gif)$/i.test(file)) {
                 results.push({
@@ -46,6 +46,7 @@ jobs:
           fs.writeFileSync('images.json', JSON.stringify(images, null, 2));
           console.log('images.json generated with', images.length, 'images');
           "
+
       - name: Commit and push images.json
         run: |
           git config user.name "ggku2021"
