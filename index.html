@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的 GitHub 图床相册</title>
     <style>
-        /* 移动端基础适配 */
+        /* 移动端基础适配和排版设置 */
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
             margin: 0;
@@ -20,16 +20,15 @@
             font-size: 1.6rem; 
         }
         
-        /* 1. 搜索和分页控件容器优化（居中） */
+        /* 搜索和分页控件容器优化（居中） */
         #controls {
             text-align: center;
             margin-bottom: 20px;
             display: flex;
             flex-wrap: wrap; 
-            justify-content: center; /* 居中整个控制面板 */
+            justify-content: center;
             gap: 10px;
             align-items: center;
-            /* 确保控制面板最大宽度，与相册内容对齐 */
             max-width: 1200px; 
             margin: 0 auto 20px auto; 
         }
@@ -57,18 +56,17 @@
             font-size: 0.9rem;
         }
 
-        /* 2. 列表左对齐 */
+        /* 列表左对齐 */
         #gallery {
             display: flex;
             flex-wrap: wrap;
             gap: 20px;
-            /* 关键修改：左对齐 */
-            justify-content: flex-start; 
+            justify-content: flex-start; /* 关键：列表左对齐 */
             max-width: 1200px; 
             margin: 0 auto;
         }
 
-        /* 相册/图片项样式 */
+        /* 相册/图片项基础样式 */
         .item-card {
             background-color: #fff;
             border-radius: 8px;
@@ -82,23 +80,25 @@
             cursor: pointer;
             height: auto; 
         }
-        /* PC端媒体查询：三列以上 */
+        /* PC端媒体查询：三列以上固定宽度 */
         @media (min-width: 768px) {
             .item-card {
-                width: 250px; /* PC端固定宽度 */
+                width: 250px; 
             }
         }
 
-        /* 文件夹（相册）样式 */
+        /* 文件夹（相册）样式：精确对齐图片卡片高度 */
         .folder-card {
             background-color: #e0f7fa;
             padding: 10px; 
             font-size: 1rem;
             font-weight: bold;
             display: flex;
-            align-items: center;
+            align-items: center; 
             justify-content: center;
-            height: 250px; 
+            /* 关键计算：250px(图高) + 30px(p最小高) + 16px(p padding) = 296px */
+            min-height: calc(250px + 30px + 16px); 
+            height: auto; 
         }
         .folder-card::before {
             content: "📁";
@@ -113,7 +113,7 @@
         /* 图片容器和图片本身的样式 */
         .image-container {
             width: 100%;
-            height: 250px; 
+            height: 250px; /* 图片显示区域固定高度 */
             overflow: hidden; 
         }
 
@@ -121,7 +121,7 @@
             width: 100%;
             height: 100%;
             display: block;
-            object-fit: cover; 
+            object-fit: cover; /* 保证图片填充容器，多余裁剪 */
             transition: transform 0.3s ease-in-out;
         }
 
@@ -246,7 +246,7 @@
             message.textContent = '正在加载相册内容...';
             
             try {
-                // 3. 修复 Bug：首次进入根目录时，先确保全局缓存加载完成
+                // 首次进入根目录时，先确保全局缓存加载完成
                 if (path === BASE_PATH && globalImageCache.length === 0) {
                     message.textContent = '首次加载，正在构建全局搜索索引...';
                     globalImageCache = await loadGlobalImageCache(BASE_PATH);
@@ -280,7 +280,6 @@
                 console.error("加载相册失败:", error);
                 message.textContent = `加载失败，请检查配置或 API 访问限制。错误：${error.message}`;
                 folderItemsCache = [];
-                // 如果加载失败，仍需调用 renderCurrentPage 来显示错误信息
                 renderCurrentPage(); 
             }
         }
@@ -318,7 +317,7 @@
 
             if (currentPage > totalPages && totalPages > 0) {
                 currentPage = totalPages;
-            } else if (totalPages === 0 && totalItems > 0) { // 修复 Bug：当 totalPages为0但有项目时，设置currentPage=1
+            } else if (totalPages === 0 && totalItems > 0) { 
                 currentPage = 1;
             } else if (totalPages === 0 && totalItems === 0) {
                 currentPage = 1;
@@ -332,7 +331,6 @@
             gallery.innerHTML = '';
             if (totalItems === 0) {
                  gallery.innerHTML = `<div id="message" style="display:block; width:100%;">未找到匹配的项目。</div>`;
-                 // 确保分页控件在无结果时隐藏
                  renderPaginationControls(0);
                  return;
             }
@@ -385,7 +383,7 @@
             paginationContainer.appendChild(nextBtn);
         }
 
-        /* --- 元素创建函数 (保持不变) --- */
+        /* --- 元素创建函数 --- */
 
         function createFolderCard(name, path, isBackButton = false) {
             const card = document.createElement('div');
@@ -420,7 +418,6 @@
 
         /* --- 事件监听 --- */
 
-        // 监听搜索框输入，实时触发本地渲染 (优化了延迟，保持用户体验)
         let searchTimeout;
         searchInput.addEventListener('input', () => {
             clearTimeout(searchTimeout);
