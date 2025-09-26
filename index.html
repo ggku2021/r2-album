@@ -1,416 +1,216 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>我的相册 | My Gallery</title>
-<style>
-/* 基础样式变量 */
-:root{
-  --gap: 12px;
-  --bg-color: #0f1724;
-  --card-bg: #0b1220;
-  --text-color: #e6eef8;
-  --light-text: #9fb5d9;
-  --folder-color: #3b82f6;
-  --hover-shadow: 0 4px 16px rgba(0,0,0,0.3);
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的 GitHub 图床相册</title>
+    <style>
+        /* 基础样式 */
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f9; }
+        h1 { color: #333; text-align: center; margin-bottom: 40px; }
+        #gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
 
-/* 全局样式重置 */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-body {
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, "PingFang SC", "Noto Sans CJK SC";
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  line-height: 1.4;
-}
+        /* 相册/图片项样式 */
+        .item-card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 300px;
+            text-align: center;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .item-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
 
-/* 头部样式 */
-header {
-  padding: 20px 16px;
-  text-align: center;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  margin-bottom: var(--gap);
-}
-header h1 {
-  font-size: 1.5rem;
-  margin-bottom: 8px;
-}
-header .tips {
-  font-size: 0.85rem;
-  color: var(--light-text);
-  margin-bottom: 8px;
-}
-#backBtn {
-  font-size: 0.85rem;
-  color: var(--folder-color);
-  cursor: pointer;
-  display: none;
-  margin-top: 4px;
-  transition: color 0.2s;
-}
-#backBtn:hover {
-  color: #60a5fa;
-}
+        /* 文件夹（相册）样式 */
+        .folder-card {
+            background-color: #e0f7fa; /* 浅蓝色背景 */
+            padding: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 150px; /* 统一高度 */
+        }
+        .folder-card::before {
+            content: "📁";
+            margin-right: 10px;
+            font-size: 1.5em;
+        }
 
-/* 面包屑导航 */
-.breadcrumb {
-  font-size: 0.8rem;
-  color: var(--light-text);
-  margin: 0 16px 12px;
-  padding: 8px 12px;
-  background-color: var(--card-bg);
-  border-radius: 6px;
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.breadcrumb .item {
-  color: var(--light-text);
-  text-decoration: none;
-  margin: 0 4px;
-}
-.breadcrumb .item:hover {
-  color: #60a5fa;
-  text-decoration: underline;
-}
-.breadcrumb .current {
-  color: var(--text-color);
-  font-weight: 500;
-}
+        /* 图片样式 */
+        .image-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+        }
+        .image-card p {
+            padding: 10px;
+            margin: 0;
+            color: #555;
+            font-size: 0.9em;
+        }
 
-/* 相册网格布局 */
-.gallery-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: var(--gap);
-  padding: 0 16px 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-/* 图片/文件夹卡片 */
-.media-card {
-  display: block;
-  background-color: var(--card-bg);
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.media-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--hover-shadow);
-}
-/* 文件夹卡片特殊标记 */
-.media-card.folder::after {
-  content: "📁";
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(0,0,0,0.4);
-  border-radius: 4px;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  z-index: 1;
-}
-.media-card.folder {
-  position: relative;
-}
-.media-card.folder img {
-  filter: brightness(0.8);
-}
-
-/* 缩略图样式 */
-.media-card img {
-  width: 100%;
-  height: 160px;
-  object-fit: cover;
-  display: block;
-  transition: transform 0.3s;
-}
-.media-card:hover img {
-  transform: scale(1.05);
-}
-
-/* 标题文字 */
-.media-title {
-  font-size: 0.85rem;
-  padding: 8px 6px;
-  text-align: center;
-  color: var(--light-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* 加载状态 */
-.loading {
-  text-align: center;
-  padding: 60px 0;
-  color: var(--light-text);
-  font-size: 0.95rem;
-}
-.loading::after {
-  content: "";
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 3px solid rgba(255,255,255,0.3);
-  border-radius: 50%;
-  border-top-color: var(--folder-color);
-  animation: spin 1s ease-in-out infinite;
-  margin-left: 8px;
-  vertical-align: middle;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* 图片加载失败样式 */
-.img-error {
-  background-color: #1e293b;
-  width: 100%;
-  height: 160px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--light-text);
-  font-size: 24px;
-}
-
-/* 大图预览（Lightbox） */
-.lightbox {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0,0,0,0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-.lightbox.show {
-  visibility: visible;
-  opacity: 1;
-}
-.lightbox img {
-  max-width: 92vw;
-  max-height: 85vh;
-  border-radius: 8px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-  transition: opacity 0.3s;
-  opacity: 0;
-}
-.lightbox.show img {
-  opacity: 1;
-}
-
-/* 预览控制按钮 */
-.lb-btn {
-  position: fixed;
-  top: 50%;
-  transform: translateY(-50%);
-  background-color: rgba(0,0,0,0.5);
-  border: none;
-  color: white;
-  font-size: 2rem;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  z-index: 10000;
-}
-.lb-btn:hover {
-  background-color: rgba(0,0,0,0.7);
-}
-.prev-btn {
-  left: 20px;
-}
-.next-btn {
-  right: 20px;
-}
-.close-btn {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background-color: transparent;
-  border: none;
-  color: white;
-  font-size: 2rem;
-  cursor: pointer;
-  z-index: 10000;
-  transition: transform 0.2s;
-}
-.close-btn:hover {
-  transform: scale(1.1);
-}
-
-/* 预览图片标题 */
-.lb-caption {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: rgba(0,0,0,0.6);
-  color: white;
-  font-size: 0.95rem;
-  padding: 8px 16px;
-  border-radius: 4px;
-  z-index: 10000;
-}
-
-/* 移动端适配 */
-@media (max-width: 480px) {
-  .gallery-container {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 8px;
-    padding: 0 8px 16px;
-  }
-  .media-card img {
-    height: 120px;
-  }
-  .img-error {
-    height: 120px;
-  }
-  .lb-btn {
-    font-size: 1.5rem;
-    width: 40px;
-    height: 40px;
-  }
-  .prev-btn {
-    left: 10px;
-  }
-  .next-btn {
-    right: 10px;
-  }
-  .close-btn {
-    font-size: 1.8rem;
-    top: 15px;
-    right: 15px;
-  }
-  .lb-caption {
-    font-size: 0.85rem;
-    bottom: 15px;
-    padding: 6px 12px;
-  }
-}
-</style>
+        /* 瀑布流布局（简单实现，图片大小不一时效果更佳） */
+        .image-card {
+            width: 250px; /* 图片宽度略小 */
+        }
+        
+        /* 提示信息 */
+        #message {
+            text-align: center;
+            color: #888;
+            margin-top: 50px;
+        }
+    </style>
 </head>
 <body>
-<!-- 头部 -->
-<header>
-  <h1>我的相册 | My Gallery</h1>
-  <div class="breadcrumb" id="breadcrumb">
-    <span class="current">首页</span>
-  </div>
-  <div class="tips">支持多层文件夹浏览 | 点击图片查看大图（键盘 ← → / Esc 支持）</div>
-  <div id="backBtn">← 返回上一级</div>
-</header>
 
-<!-- 相册容器 -->
-<main class="gallery-container" id="galleryContainer">
-  <div class="loading">加载中</div>
-</main>
-
-<!-- 大图预览组件 -->
-<div class="lightbox" id="lightbox">
-  <button class="lb-btn prev-btn" id="prevBtn" aria-label="上一张">←</button>
-  <img src="" alt="" id="lbImage">
-  <button class="lb-btn next-btn" id="nextBtn" aria-label="下一张">→</button>
-  <button class="close-btn" id="closeBtn" aria-label="关闭">×</button>
-  <div class="lb-caption" id="lbCaption"></div>
-</div>
-
-<script>
-// 核心变量
-const jsonPath = 'images.json'; // 指向Actions生成的图片结构文件
-let currentFolder = null; // 当前打开的文件夹数据
-let currentImages = []; // 当前显示的图片列表
-let navigationHistory = []; // 导航历史（用于面包屑和回退）
-let currentImgIndex = 0; // 大图预览当前索引
-
-// DOM元素
-const galleryContainer = document.getElementById('galleryContainer');
-const breadcrumb = document.getElementById('breadcrumb');
-const backBtn = document.getElementById('backBtn');
-const lightbox = document.getElementById('lightbox');
-const lbImage = document.getElementById('lbImage');
-const lbCaption = document.getElementById('lbCaption');
-const prevBtn = document.getElementById('prevBtn');
-const nextBtn = document.getElementById('nextBtn');
-const closeBtn = document.getElementById('closeBtn');
-
-// 初始化：加载图片数据并渲染相册
-async function initGallery() {
-  try {
-    // 加载images.json（禁用缓存，确保最新）
-    const response = await fetch(jsonPath, { cache: 'no-store' });
-    if (!response.ok) throw new Error(`加载失败：${response.status} ${response.statusText}`);
+    <h1 id="page-title">相册主页</h1>
+    <div id="gallery">
+        <div id="message">正在加载相册内容...</div>
+    </div>
     
-    const mediaData = await response.json();
-    // 渲染首页（根目录图片+文件夹）
-    renderGallery(mediaData);
-  } catch (error) {
-    console.error('相册初始化失败：', error);
-    galleryContainer.innerHTML = `
-      <div style="padding:40px;text-align:center;color:#f88">
-        相册加载失败<br>
-        错误原因：${error.message}<br>
-        请检查GitHub Actions是否成功生成images.json
-      </div>
-    `;
-  }
-}
+    <script>
+        // =======================================================
+        // 🚀 配置信息已根据您的路径设置
+        // =======================================================
+        const GITHUB_USERNAME = 'ggku2021'; 
+        const GITHUB_REPO_NAME = 'r2-album'; 
+        const GITHUB_BRANCH = 'main'; 
+        // 您的图片起始目录，对应路径中的 /img
+        const BASE_PATH = 'img'; 
+        // =======================================================
 
-// 渲染相册（支持首页和文件夹内页面）
-function renderGallery(mediaData) {
-  galleryContainer.innerHTML = '<div class="loading">加载中</div>';
-  
-  // 区分“首页”和“文件夹内”
-  if (!currentFolder) {
-    // 首页：根目录的图片和文件夹（mediaData是整个images.json数组）
-    const rootImages = mediaData.filter(item => item.type === 'image');
-    const rootFolders = mediaData.filter(item => item.type === 'folder');
-    
-    let galleryHtml = '';
-    // 渲染根目录图片
-    rootImages.forEach((img, index) => {
-      galleryHtml += `
-        <a class="media-card" data-type="image" data-index="${index}">
-          <img src="${img.url}" alt="${img.title}" 
-               onload="this.style.opacity='1'" 
-               onerror="this.replaceWith('<div class=\'img-error\'>🖼️</div>')"
-               style="opacity:0;transition:opacity 0.3s">
-          <div class="media-title">${img.title}</div>
-        </a>
-      `;
-    });
-    // 渲染根目录文件夹
-    rootFolders.forEach(folder => {
-      galleryHtml += `
-        <a class="media-card folder" data-type="folder" data-folder='${JSON.stringify(folder)}'>
-          <img src="${folder.cover || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzNiODJmNiIgZD0iTTEyIDJDMTEuNCAyIDExIDEuNiAxMSAxLjFDMTEgMC41IDEwLjUgMCAxMCAwQzkuNSAwIDkgMC41IDkgMS4xQzkgMS42IDguNiAyIDggMkM0LjcgMiAyIDQuNyAyIDhDMiAxMS4zIDQuNyAxNCA4IDE0QzExLjMgMTQgMTQgMTEuMyAxNCA4QzE0IDQuNyAxMS4zIDIgOCAyTTE4IDhDMTh2MTBDMTggMTguOCAxNy4yIDIwIDE2IDIwSDhDMi4yIDIwIDIgMTguOCAyIDE4VjhDMiA3LjIgMi44IDYgNCA2SDIwQzIxLjIgNiAyMiA2LjIgMjIgOFoiLz48L3N2Zz4='}" 
-               alt="${folder.title}" 
-               onload="this.style.opacity='1'" 
-               onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzNiODJmNiIgZD0iTTEyIDJDMTEuNCAyIDExIDEuNiAxMSAxLjFDMTEgMC41IDEwLjUgMCAxMCAwQzkuNSAwIDkgMC41IDkgMS4xQzkgMS42IDguNiAyIDggMkM0LjcgMiAyIDQuNyAyIDhDMiAxMS4zIDQuNyAxNCA4IDE0QzExLjMgMTQgMTQgMTEuMyAxNCA4QzE0IDQuNyAxMS4zIDIgOCAyTTE4IDhDMTh2MTBDMTggMTguOCAxNy4yIDIwIDE2IDIwSDhDMi4yIDIwIDIgMTguOCAyIDE4VjhDMiA
+        const gallery = document.getElementById('gallery');
+        const message = document.getElementById('message');
+        const pageTitle = document.getElementById('page-title');
+
+        /**
+         * 获取 GitHub 仓库内容的 API URL
+         */
+        function getContentApiUrl(path) {
+            return `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}/contents/${path}?ref=${GITHUB_BRANCH}`;
+        }
+
+        /**
+         * 生成图片 CDN 链接（使用 jsDelivr 加速）
+         */
+        function getCdnUrl(path) {
+            // 确保路径不以 / 开头
+            const cleanPath = path.startsWith('/') ? path.substring(1) : path; 
+            return `https://cdn.jsdelivr.net/gh/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}@${GITHUB_BRANCH}/${cleanPath}`;
+        }
+
+        /**
+         * 判断是否为图片文件
+         */
+        function isImage(name) {
+            const lowerName = name.toLowerCase();
+            return lowerName.endsWith('.jpg') || 
+                   lowerName.endsWith('.jpeg') || 
+                   lowerName.endsWith('.png') || 
+                   lowerName.endsWith('.gif') || 
+                   lowerName.endsWith('.webp');
+        }
+
+        /**
+         * 渲染相册内容
+         */
+        async function renderGallery(currentPath) {
+            const isRoot = currentPath === BASE_PATH;
+            const folderName = currentPath.split('/').pop();
+            pageTitle.textContent = isRoot ? '相册主页' : `相册：${folderName}`;
+            gallery.innerHTML = '';
+            message.textContent = '正在加载...';
+            
+            try {
+                const response = await fetch(getContentApiUrl(currentPath));
+                if (!response.ok) {
+                    throw new Error(`GitHub API 错误: ${response.status} ${response.statusText}`);
+                }
+                const data = await response.json();
+                
+                if (data.length === 0) {
+                    message.textContent = '此相册为空。';
+                    return;
+                }
+
+                message.style.display = 'none';
+
+                // 1. 渲染返回按钮 (如果不是 BASE_PATH 根目录)
+                if (currentPath !== BASE_PATH) {
+                    const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+                    const backButton = createFolderCard('... 返回上一级', parentPath);
+                    backButton.style.backgroundColor = '#ffcdd2'; // 红色提示
+                    gallery.appendChild(backButton);
+                }
+
+                // 2. 渲染文件夹 (作为子相册)
+                data.filter(item => item.type === 'dir').forEach(folder => {
+                    gallery.appendChild(createFolderCard(folder.name, folder.path));
+                });
+
+                // 3. 渲染图片文件
+                data.filter(item => item.type === 'file' && isImage(item.name)).forEach(file => {
+                    gallery.appendChild(createImageCard(file.name, file.path));
+                });
+
+            } catch (error) {
+                console.error("加载相册失败:", error);
+                message.textContent = `加载失败，请检查配置和网络。错误：${error.message}`;
+            }
+        }
+
+        /**
+         * 创建文件夹卡片元素
+         */
+        function createFolderCard(name, path) {
+            const card = document.createElement('div');
+            card.className = 'item-card folder-card';
+            card.textContent = name;
+            card.onclick = () => renderGallery(path); // 点击进入下一级
+            return card;
+        }
+
+        /**
+         * 创建图片卡片元素
+         */
+        function createImageCard(name, path) {
+            const card = document.createElement('div');
+            card.className = 'item-card image-card';
+
+            const img = document.createElement('img');
+            img.src = getCdnUrl(path);
+            img.alt = name;
+            
+            // 简单添加图片文件名作为描述
+            const p = document.createElement('p');
+            p.textContent = name; 
+
+            card.appendChild(img);
+            card.appendChild(p);
+
+            // 点击新窗口打开大图
+            card.onclick = () => window.open(getCdnUrl(path), '_blank'); 
+
+            return card;
+        }
+
+        // 页面初始化时加载
+        renderGallery(BASE_PATH);
+    </script>
+
+</body>
+</html>
