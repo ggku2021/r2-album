@@ -25,13 +25,14 @@
             text-align: center;
             transition: transform 0.2s;
             cursor: pointer;
+            height: auto; /* 关键：高度由内容决定，消除多余空白 */
         }
         .item-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
         }
 
-        /* 文件夹（相册）样式：统一高度，保持整齐 */
+        /* 文件夹（相册）样式：保持统一性 */
         .folder-card {
             background-color: #e0f7fa;
             padding: 20px;
@@ -40,7 +41,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 250px; /* 让文件夹卡片高度和图片卡片高度大致一致 */
+            height: 250px; /* 让文件夹卡片高度和图片显示区域一致 */
         }
         .folder-card::before {
             content: "📁";
@@ -48,16 +49,22 @@
             font-size: 1.5em;
         }
 
-        /* 🏆 图片样式核心优化 🏆 */
+        /* 🏆 图片容器和图片本身的样式 🏆 */
+        .image-container {
+            /* 新增容器：强制统一图片显示区域高度 */
+            width: 100%;
+            height: 250px; 
+            overflow: hidden; /* 裁剪溢出部分 */
+        }
+
         .image-card img {
             width: 100%;
-            height: 250px; /* 强制所有图片高度一致 */
+            height: 100%; /* 填满父容器 (250px) */
             display: block;
             
-            /* 核心属性：保证图片内容填满 250x250 容器，多余部分裁剪 */
+            /* 核心属性：内容填满容器，保持比例并裁剪 */
             object-fit: cover; 
             
-            /* 可选：鼠标悬停放大效果 */
             transition: transform 0.3s ease-in-out;
         }
         .image-card:hover img {
@@ -69,6 +76,11 @@
             margin: 0;
             color: #555;
             font-size: 0.9em;
+            /* 文字区域确保紧凑和居中 */
+            min-height: 40px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         /* 提示信息 */
@@ -100,15 +112,24 @@
         const message = document.getElementById('message');
         const pageTitle = document.getElementById('page-title');
 
+        /**
+         * 获取 GitHub 仓库内容的 API URL
+         */
         function getContentApiUrl(path) {
             return `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}/contents/${path}?ref=${GITHUB_BRANCH}`;
         }
 
+        /**
+         * 生成图片 CDN 链接（使用 jsDelivr 加速）
+         */
         function getCdnUrl(path) {
             const cleanPath = path.startsWith('/') ? path.substring(1) : path; 
             return `https://cdn.jsdelivr.net/gh/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}@${GITHUB_BRANCH}/${cleanPath}`;
         }
 
+        /**
+         * 判断是否为图片文件
+         */
         function isImage(name) {
             const lowerName = name.toLowerCase();
             return lowerName.endsWith('.jpg') || 
@@ -118,6 +139,9 @@
                    lowerName.endsWith('.webp');
         }
 
+        /**
+         * 渲染相册内容
+         */
         async function renderGallery(currentPath) {
             const isRoot = currentPath === BASE_PATH;
             const folderName = currentPath.split('/').pop();
@@ -139,6 +163,7 @@
 
                 message.style.display = 'none';
 
+                // 1. 渲染返回按钮
                 if (currentPath !== BASE_PATH) {
                     const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
                     const backButton = createFolderCard('... 返回上一级', parentPath);
@@ -146,10 +171,12 @@
                     gallery.appendChild(backButton);
                 }
 
+                // 2. 渲染文件夹
                 data.filter(item => item.type === 'dir').forEach(folder => {
                     gallery.appendChild(createFolderCard(folder.name, folder.path));
                 });
 
+                // 3. 渲染图片文件
                 data.filter(item => item.type === 'file' && isImage(item.name)).forEach(file => {
                     gallery.appendChild(createImageCard(file.name, file.path));
                 });
@@ -160,6 +187,9 @@
             }
         }
 
+        /**
+         * 创建文件夹卡片元素
+         */
         function createFolderCard(name, path) {
             const card = document.createElement('div');
             card.className = 'item-card folder-card';
@@ -168,28 +198,7 @@
             return card;
         }
 
-        function createImageCard(name, path) {
-            const card = document.createElement('div');
-            card.className = 'item-card image-card';
-
-            const img = document.createElement('img');
-            img.src = getCdnUrl(path);
-            img.alt = name;
-            
-            const p = document.createElement('p');
-            p.textContent = name; 
-
-            card.appendChild(img);
-            card.appendChild(p);
-
-            card.onclick = () => window.open(getCdnUrl(path), '_blank'); 
-
-            return card;
-        }
-
-        // 页面初始化时加载
-        renderGallery(BASE_PATH);
-    </script>
-
-</body>
-</html>
+        /**
+         * 🏆 创建图片卡片元素 (已修改结构) 🏆
+         */
+        function createImageCard(name,
