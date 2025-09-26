@@ -1,0 +1,49 @@
+name: Generate images.json
+
+on:
+  push:
+    paths:
+      - 'images/**'
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Determine branch name
+        run: echo "BRANCH=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+
+      - name: Generate images.json
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const dir = 'images';
+          const repo = process.env.GITHUB_REPOSITORY;
+          const branch = process.env.BRANCH || 'main';
+          const out = 'images.json';
+          const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => !f.startsWith('.') && !f.startsWith('_')) : [];
+          const items = files.map(f => {
+            const enc = encodeURIComponent(f);
+            const url = `https://cdn.jsdelivr.net/gh/${repo}@${branch}/images/${enc}`;
+            return { filename: f, url, title: f };
+          });
+          fs.writeFileSync(out, JSON.stringify(items, null, 2));
+          console.log('Generated', out, 'with', items.length, 'items');
+          NODE
+
+      - name: Commit & push images.json (if changed)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add images.json
+          git diff --staged --quiet || (git commit -m "chore: update images.json" && git push)
