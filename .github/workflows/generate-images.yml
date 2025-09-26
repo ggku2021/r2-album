@@ -27,7 +27,7 @@ jobs:
         run: |
           node - <<'NODE'
           const fs = require('fs');
-          const dir = 'images';
+          const dir = 'img';
           const repo = process.env.GITHUB_REPOSITORY;
           const branch = process.env.BRANCH || 'main';
           const out = 'images.json';
