@@ -24,36 +24,35 @@ jobs:
           const fs = require('fs');
           const path = require('path');
 
-          function getFoldersImages(dir) {
-            let folders = [];
-            fs.readdirSync(dir).forEach(folderName => {
-              const folderPath = path.join(dir, folderName);
-              if (fs.statSync(folderPath).isDirectory()) {
-                const images = [];
-                fs.readdirSync(folderPath).forEach(file => {
-                  if (/\.(jpg|jpeg|png|gif)$/i.test(file)) {
-                    images.push({
-                      filename: file,
-                      url: 'https://raw.githubusercontent.com/ggku2021/r2-album/main/' + path.join(folderPath, file).replace(/\\/g,'/'),
-                      title: file
-                    });
-                  }
-                });
-                if (images.length > 0) {
-                  folders.push({
-                    folder: folderName,
-                    cover: images[0].url,
-                    images: images
+          function scanDir(dir) {
+            const items = [];
+            fs.readdirSync(dir).forEach(file => {
+              const fullPath = path.join(dir, file);
+              const relPath = fullPath.replace(/\\/g, '/');
+              if (fs.statSync(fullPath).isDirectory()) {
+                const children = scanDir(fullPath);
+                if (children.length > 0) {
+                  items.push({
+                    type: 'folder',
+                    title: file,
+                    cover: children.find(i => i.type==='image')?.url || '',
+                    children: children
                   });
                 }
+              } else if (/\.(jpg|jpeg|png|gif)$/i.test(file)) {
+                items.push({
+                  type: 'image',
+                  title: file,
+                  url: 'https://raw.githubusercontent.com/ggku2021/r2-album/main/' + relPath
+                });
               }
             });
-            return folders;
+            return items;
           }
 
-          const result = getFoldersImages('img');
+          const result = scanDir('img');
           fs.writeFileSync('images.json', JSON.stringify(result, null, 2));
-          console.log('images.json generated with', result.length, 'folders');
+          console.log('images.json generated with', result.length, 'items');
           "
 
       - name: Commit and push images.json
