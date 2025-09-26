@@ -3,62 +3,132 @@ name: Generate images.json
 on:
   push:
     paths:
-      - 'img/**'
+      - 'img/**'  # 仅在img目录变动时触发
+    branches:
+      - main      # 限定在main分支触发
+  workflow_dispatch:  # 支持手动触发（方便测试）
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # 升级到最新版
+        with:
+          fetch-depth: 1  # 仅拉取最新提交，加快速度
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4  # 升级到最新版
         with:
-          node-version: '18'
+          node-version: '20'  # 使用更稳定的版本
+          cache: 'npm'        # 启用缓存（未来扩展依赖时有用）
 
       - name: Generate images.json with folders and cover
         run: |
           node -e "
-          const fs = require('fs');
+          const fs = require('fs').promises;
           const path = require('path');
+          const fsSync = require('fs');
 
-          function scanDir(dir) {
+          // 配置项 - 集中管理便于修改
+          const CONFIG = {
+            rootDir: 'img',
+            baseUrl: 'https://raw.githubusercontent.com/ggku2021/r2-album/main/',
+            imageExts: ['jpg', 'jpeg', 'png', 'gif', 'webp'], // 增加webp支持
+            outputFile: 'images.json'
+          };
+
+          // 检查文件是否为图片
+          const isImage = (filename) => {
+            const ext = path.extname(filename).toLowerCase().slice(1);
+            return CONFIG.imageExts.includes(ext);
+          };
+
+          // 递归扫描目录（改进版）
+          async function scanDir(dir) {
             const items = [];
-            fs.readdirSync(dir).forEach(file => {
+            const files = await fs.readdir(dir);
+            
+            for (const file of files) {
               const fullPath = path.join(dir, file);
-              const relPath = fullPath.replace(/\\/g, '/');
-              if (fs.statSync(fullPath).isDirectory()) {
-                const children = scanDir(fullPath);
+              const stats = await fs.stat(fullPath);
+              const relPath = fullPath.replace(/\\/g, '/'); // 统一路径分隔符
+              
+              if (stats.isDirectory()) {
+                // 递归处理子文件夹
+                const children = await scanDir(fullPath);
                 if (children.length > 0) {
+                  // 查找第一个图片作为封面
+                  const coverItem = children.find(item => item.type === 'image');
+                  
                   items.push({
                     type: 'folder',
                     title: file,
-                    cover: children.find(i => i.type==='image')?.url || '',
+                    cover: coverItem?.url || '',
+                    path: relPath.replace(CONFIG.rootDir + '/', ''), // 相对路径
                     children: children
                   });
                 }
-              } else if (/\.(jpg|jpeg|png|gif)$/i.test(file)) {
+              } else if (isImage(file)) {
+                // 处理图片文件
+                const title = path.basename(file, path.extname(file))
+                  .replace(/_/g, ' ') // 下划线转空格
+                  .replace(/-/g, ' '); // 连字符转空格
+                  
                 items.push({
                   type: 'image',
-                  title: file,
-                  url: 'https://raw.githubusercontent.com/ggku2021/r2-album/main/' + relPath
+                  title: title,
+                  filename: file,
+                  url: CONFIG.baseUrl + relPath,
+                  path: relPath.replace(CONFIG.rootDir + '/', '') // 相对路径
                 });
               }
-            });
+            }
+            
             return items;
           }
 
-          const result = scanDir('img');
-          fs.writeFileSync('images.json', JSON.stringify(result, null, 2));
-          console.log('images.json generated with', result.length, 'items');
+          // 主执行函数（增加错误处理）
+          (async () => {
+            try {
+              // 检查根目录是否存在
+              if (!fsSync.existsSync(CONFIG.rootDir)) {
+                throw new Error(`图片目录 "${CONFIG.rootDir}" 不存在`);
+              }
+
+              // 执行扫描
+              const result = await scanDir(CONFIG.rootDir);
+              
+              // 写入结果
+              await fs.writeFile(
+                CONFIG.outputFile, 
+                JSON.stringify(result, null, 2), 
+                'utf8'
+              );
+              
+              console.log(`✅ 成功生成 ${CONFIG.outputFile}，包含 ${result.length} 个项目`);
+            } catch (error) {
+              console.error(`❌ 生成失败: ${error.message}`);
+              process.exit(1); // 出错时终止工作流
+            }
+          })();
           "
 
       - name: Commit and push images.json
         run: |
-          git config user.name "ggku2021"
-          git config user.email "ggku@qq.com"
+          # 检查是否有实际变更
+          if git diff --quiet -- "images.json"; then
+            echo "ℹ️ 没有变更，无需提交"
+            exit 0
+          fi
+
+          # 配置Git身份（使用GitHub内置变量）
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+
+          # 提交变更
           git add images.json
-          git commit -m '自动生成 images.json' || echo 'No changes to commit'
-          git push origin main
+          git commit -m "chore: 自动更新images.json [$(date +'%Y-%m-%d %H:%M:%S')]"
+          
+          # 安全推送（避免覆盖他人修改）
+          git push origin main --force-with-lease
