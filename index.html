@@ -61,7 +61,7 @@
             display: flex;
             flex-wrap: wrap;
             gap: 20px;
-            justify-content: flex-start; /* 关键：列表左对齐 */
+            justify-content: flex-start; 
             max-width: 1200px; 
             margin: 0 auto;
         }
@@ -72,13 +72,14 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             overflow: hidden;
-            width: calc(50% - 10px); /* 移动端默认两列 */
+            width: calc(50% - 10px); 
             min-width: 150px;
-            max-width: 250px; /* PC端最大宽度 */
+            max-width: 250px; 
             text-align: center;
             transition: transform 0.2s;
             cursor: pointer;
             height: auto; 
+            position: relative; /* 用于文件夹名称叠加 */
         }
         /* PC端媒体查询：三列以上固定宽度 */
         @media (min-width: 768px) {
@@ -87,33 +88,85 @@
             }
         }
 
-        /* 文件夹（相册）样式：精确对齐图片卡片高度 */
+        /* 文件夹（相册）样式：使用图片封面，名称叠加在上面 */
         .folder-card {
-            background-color: #e0f7fa;
-            padding: 10px; 
-            font-size: 1rem;
-            font-weight: bold;
+            background-color: #e0f7fa; /* 默认背景，以防没有封面图 */
+            padding: 0; /* 移除内边距，让图片填充 */
             display: flex;
+            flex-direction: column; /* 垂直布局内容 */
             align-items: center; 
             justify-content: center;
-            /* 关键计算：250px(图高) + 30px(p最小高) + 16px(p padding) = 296px */
-            min-height: calc(250px + 30px + 16px); 
+            min-height: calc(250px + 30px + 16px); /* 保持与图片卡片总高度一致 */
             height: auto; 
+            background-size: cover; /* 封面图填充 */
+            background-position: center center; /* 封面图居中 */
+            color: #fff; /* 默认白色文字 */
+            text-shadow: 0 0 5px rgba(0,0,0,0.7); /* 文字阴影增强可读性 */
         }
+
+        .folder-card .folder-name {
+            font-size: 1.2rem; /* 字体大一点 */
+            font-weight: bold;
+            padding: 8px 5px;
+            margin-top: auto; /* 推到底部 */
+            width: 100%;
+            box-sizing: border-box; /* 包含 padding 在宽度内 */
+            background-color: rgba(0, 0, 0, 0.5); /* 半透明底色块 */
+            position: absolute; /* 叠加在图片上 */
+            bottom: 0;
+            left: 0;
+            color: #fff; /* 确保文字颜色 */
+        }
+        
         .folder-card::before {
-            content: "📁";
-            margin-right: 5px;
-            font-size: 1.2rem;
+            content: ""; /* 移除默认的文件夹图标 */
+            margin-right: 0;
+            font-size: 0;
         }
+
+        .folder-card.no-cover {
+            background-color: #e0f7fa; /* 没有封面时回退 */
+            color: #333;
+            text-shadow: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .folder-card.no-cover .folder-name {
+            background-color: transparent;
+            position: static; /* 没有封面时文字正常流 */
+            color: #333;
+        }
+        .folder-card.no-cover::before {
+             content: "📁"; /* 没有封面时显示默认图标 */
+             margin-right: 5px;
+             font-size: 1.2rem;
+             color: #333;
+        }
+
+
         .back-button {
             background-color: #ffcdd2 !important;
             font-weight: normal !important;
+            color: #333 !important;
+            text-shadow: none !important;
         }
+        .back-button .folder-name {
+            background-color: transparent !important;
+            color: #333 !important;
+            position: static !important;
+        }
+        .back-button::before {
+            content: "⬅️" !important;
+            margin-right: 5px !important;
+            font-size: 1.2rem !important;
+        }
+
 
         /* 图片容器和图片本身的样式 */
         .image-container {
             width: 100%;
-            height: 250px; /* 图片显示区域固定高度 */
+            height: 250px; 
             overflow: hidden; 
         }
 
@@ -121,7 +174,7 @@
             width: 100%;
             height: 100%;
             display: block;
-            object-fit: cover; /* 保证图片填充容器，多余裁剪 */
+            object-fit: cover; 
             transition: transform 0.3s ease-in-out;
         }
 
@@ -178,9 +231,10 @@
 
         // 全局状态变量
         let currentPath = BASE_PATH;
-        let folderItemsCache = []; // 当前文件夹的项目缓存 (用于正常导航)
-        let globalImageCache = []; // 全局图片缓存 (用于全局搜索)
-        let currentItems = []; // 当前页面的项目 (经过搜索/分页过滤)
+        let folderItemsCache = []; 
+        let globalImageCache = []; 
+        let folderCoverCache = {}; // 👈 新增：缓存文件夹封面图 URL
+        let currentItems = []; 
         let currentPage = 1;
         let isSearching = false;
 
@@ -203,7 +257,8 @@
         /* --- 全局搜索加载 (Recursive Load) --- */
 
         /**
-         * 递归加载所有子文件夹的图片，并扁平化存储。
+         * 递归加载所有子文件夹的图片，并扁平化存储在 globalImageCache 中。
+         * 同时尝试为每个文件夹找到一个封面图。
          */
         async function loadGlobalImageCache(path = BASE_PATH) {
             try {
@@ -214,15 +269,31 @@
                 }
                 const data = await response.json();
                 let images = [];
+                let folderImages = []; // 当前文件夹下的图片
 
                 for (const item of data) {
                     if (item.type === 'file' && isImage(item.name)) {
                         images.push({ name: item.name, path: item.path, type: 'file' });
+                        folderImages.push(item.path); // 收集当前文件夹的图片路径
                     } else if (item.type === 'dir') {
+                        // 递归调用
                         const subImages = await loadGlobalImageCache(item.path);
                         images = images.concat(subImages);
+                        // 从子文件夹的图片中随机选一个作为封面，如果当前文件夹没有
+                        if (!folderCoverCache[item.path]) {
+                            const availableCovers = subImages.map(img => img.path);
+                            if (availableCovers.length > 0) {
+                                folderCoverCache[item.path] = getCdnUrl(availableCovers[Math.floor(Math.random() * availableCovers.length)]);
+                            }
+                        }
                     }
                 }
+
+                // 为当前文件夹设置封面图 (优先使用当前文件夹下的图片)
+                if (!folderCoverCache[path] && folderImages.length > 0) {
+                    folderCoverCache[path] = getCdnUrl(folderImages[Math.floor(Math.random() * folderImages.length)]);
+                }
+                
                 return images;
             } catch (error) {
                 console.error("全局加载失败:", error);
@@ -248,11 +319,10 @@
             try {
                 // 首次进入根目录时，先确保全局缓存加载完成
                 if (path === BASE_PATH && globalImageCache.length === 0) {
-                    message.textContent = '首次加载，正在构建全局搜索索引...';
+                    message.textContent = '首次加载，正在构建全局搜索索引和文件夹封面...';
                     globalImageCache = await loadGlobalImageCache(BASE_PATH);
                     message.textContent = '正在加载相册内容...';
-                    // 如果全局缓存加载失败，需要在此时显示错误信息
-                    if (globalImageCache.length === 0) {
+                    if (globalImageCache.length === 0 && folderCoverCache[BASE_PATH] === undefined) {
                         message.textContent = '加载失败：无法获取仓库内容，请检查网络或 GitHub API 限制。';
                         return;
                     }
@@ -298,12 +368,10 @@
             let filteredItems = [];
 
             if (isSearching) {
-                // 搜索模式：从全局图片缓存中查找
                 filteredItems = globalImageCache.filter(item => 
                     item.name.toLowerCase().includes(searchTerm)
                 );
             } else {
-                // 正常模式：使用当前文件夹缓存
                 const folders = folderItemsCache.filter(item => item.type === 'dir');
                 const files = folderItemsCache.filter(item => item.type === 'file' && isImage(item.name));
                 filteredItems = [...folders, ...files];
@@ -311,7 +379,6 @@
             
             currentItems = filteredItems;
 
-            // 计算分页
             const totalItems = currentItems.length;
             const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
@@ -327,7 +394,6 @@
             const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
             const itemsOnPage = currentItems.slice(startIndex, endIndex);
 
-            // 渲染内容
             gallery.innerHTML = '';
             if (totalItems === 0) {
                  gallery.innerHTML = `<div id="message" style="display:block; width:100%;">未找到匹配的项目。</div>`;
@@ -343,17 +409,50 @@
             }
 
             // 渲染当前页面的项目
-            itemsOnPage.forEach(item => {
+            for (const item of itemsOnPage) { // 使用 for...of 支持 await
                 if (item.type === 'dir' && !isSearching) {
-                    gallery.appendChild(createFolderCard(item.name, item.path));
+                    // 👈 异步获取文件夹封面
+                    const coverUrl = folderCoverCache[item.path] || await getFolderCover(item.path);
+                    gallery.appendChild(createFolderCard(item.name, item.path, false, coverUrl));
                 } else if (item.type === 'file') {
                     gallery.appendChild(createImageCard(item.name, item.path));
                 }
-            });
+            }
 
-            // 渲染分页控件
             renderPaginationControls(totalPages);
         }
+
+        /**
+         * 动态获取文件夹封面图 (如果 cache 中没有)
+         */
+        async function getFolderCover(folderPath) {
+            if (folderCoverCache[folderPath]) {
+                return folderCoverCache[folderPath];
+            }
+
+            try {
+                const response = await fetch(getContentApiUrl(folderPath));
+                if (!response.ok) return null;
+                const data = await response.json();
+                
+                // 查找当前文件夹下的第一张图片作为封面
+                let directImages = data.filter(item => item.type === 'file' && isImage(item.name));
+                if (directImages.length > 0) {
+                    const cover = getCdnUrl(directImages[0].path); // 使用第一张图片
+                    folderCoverCache[folderPath] = cover;
+                    return cover;
+                }
+
+                // 如果当前文件夹没有图片，则尝试在子文件夹中寻找 (这在 loadGlobalImageCache 中已处理)
+                // 这里为了效率，只查找当前层级。更深层级在 loadGlobalImageCache 中统一处理。
+                return null;
+
+            } catch (error) {
+                console.warn(`获取文件夹封面失败: ${folderPath}`, error);
+                return null;
+            }
+        }
+
 
         /**
          * 渲染分页按钮
@@ -385,11 +484,24 @@
 
         /* --- 元素创建函数 --- */
 
-        function createFolderCard(name, path, isBackButton = false) {
+        function createFolderCard(name, path, isBackButton = false, coverUrl = null) {
             const card = document.createElement('div');
-            card.className = `item-card folder-card ${isBackButton ? 'back-button' : ''}`;
-            card.textContent = name;
+            card.className = `item-card folder-card ${isBackButton ? 'back-button' : ''} ${!coverUrl && !isBackButton ? 'no-cover' : ''}`;
             card.onclick = () => loadAndRenderGallery(path);
+
+            const folderNameDiv = document.createElement('div');
+            folderNameDiv.className = 'folder-name';
+            folderNameDiv.textContent = name;
+
+            card.appendChild(folderNameDiv);
+
+            if (coverUrl && !isBackButton) {
+                card.style.backgroundImage = `url('${coverUrl}')`;
+            } else if (!isBackButton) {
+                // 如果没有封面图，显示默认图标和名字
+                // CSS 会处理 .no-cover 样式
+            }
+            
             return card;
         }
 
