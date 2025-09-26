@@ -46,99 +46,153 @@
   </div>
 
   <script>
-    // 配置：如果你想用相对路径（同域），把 useCdnUrl = false
-    const useCdnUrl = true; // true -> Action 生成的 url 已是 cdn 链接
-    const jsonPath = 'images.json'; // images.json 在仓库根
+const jsonPath = 'images.json'; // images.json 在仓库根
+let galleryData = []; // 存储根目录图片和文件夹
+let flatImages = [];  // 扁平化所有图片，用于 Lightbox
+let currentIndex = 0;
 
-    let images = [];
-    let currentIndex = 0;
+async function fetchImages() {
+  try {
+    const res = await fetch(jsonPath, {cache: "no-store"});
+    if(!res.ok) throw new Error('无法读取 images.json: ' + res.status);
+    galleryData = await res.json();
+    renderGallery();
+    flattenImages();
+  } catch(e) {
+    console.error(e);
+    document.getElementById('gallery').innerHTML = '<div style="padding:20px;color:#f88">载入图片失败，请检查 images.json 是否存在并且格式正确。</div>';
+  }
+}
 
-    async function fetchImages() {
-      try {
-        const res = await fetch(jsonPath, {cache: "no-store"});
-        if (!res.ok) throw new Error('无法读取 images.json: ' + res.status);
-        images = await res.json();
-        renderGallery();
-      } catch (e) {
-        console.error(e);
-        document.getElementById('gallery').innerHTML = '<div style="padding:20px;color:#f88">载入图片失败，请检查 images.json 是否存在并且格式正确。</div>';
+function renderGallery() {
+  const container = document.getElementById('gallery');
+  if(!Array.isArray(galleryData) || galleryData.length===0) {
+    container.innerHTML = '<div style="padding:16px;color:#9fb5d9">相册暂无图片，上传到 images/ 文件夹并触发 workflow 即可。</div>';
+    return;
+  }
+
+  container.innerHTML = galleryData.map((item,i) => {
+    if(item.type==='folder') {
+      return `
+        <div class="thumb folder" data-index="${i}">
+          <img loading="lazy" src="${item.cover}" alt="${item.title}">
+          <div class="caption">📁 ${item.title}</div>
+        </div>
+      `;
+    } else {
+      return `
+        <a href="${item.url}" class="thumb" data-index="${i}">
+          <img loading="lazy" src="${item.url}" alt="${item.title}">
+          <div class="caption">${item.title}</div>
+        </a>
+      `;
+    }
+  }).join('');
+
+  // 绑定事件
+  container.querySelectorAll('.thumb').forEach(el => {
+    el.addEventListener('click', e => {
+      const idx = +el.dataset.index;
+      const item = galleryData[idx];
+      if(item.type==='folder') {
+        // 展开文件夹
+        renderFolderImages(idx, el);
+      } else {
+        e.preventDefault();
+        openLightbox(flatImages.indexOf(item));
       }
-    }
-
-    function renderGallery() {
-      const container = document.getElementById('gallery');
-      if (!Array.isArray(images) || images.length === 0) {
-        container.innerHTML = '<div style="padding:16px;color:#9fb5d9">相册暂无图片，上传到 images/ 文件夹并触发 workflow 即可。</div>';
-        return;
-      }
-      container.innerHTML = images.map((it, i) => {
-        const thumb = it.thumbnail || it.url;
-        const title = it.title ? escapeHtml(it.title) : '';
-        return `
-          <a href="${escapeAttr(it.url)}" class="thumb" data-index="${i}">
-            <img loading="lazy" src="${escapeAttr(thumb)}" alt="${title}">
-            <div class="caption">${title}</div>
-          </a>
-        `;
-      }).join('');
-      // 绑定点击事件
-      container.querySelectorAll('.thumb').forEach(a => {
-        a.addEventListener('click', e => {
-          e.preventDefault();
-          openLightbox(+a.dataset.index);
-        });
-      });
-    }
-
-    // Lightbox 控制
-    const lb = document.getElementById('lightbox');
-    const lbImg = document.getElementById('lbImg');
-    const lbCaption = document.getElementById('lbCaption');
-    document.getElementById('closeBtn').addEventListener('click', closeLightbox);
-    document.getElementById('prevBtn').addEventListener('click', () => show(currentIndex - 1));
-    document.getElementById('nextBtn').addEventListener('click', () => show(currentIndex + 1));
-    lb.addEventListener('click', (e) => { if (e.target === lb) closeLightbox(); });
-
-    function openLightbox(idx) {
-      currentIndex = idx;
-      show(currentIndex);
-      lb.classList.add('show');
-      lb.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
-    }
-
-    function closeLightbox() {
-      lb.classList.remove('show');
-      lb.setAttribute('aria-hidden', 'true');
-      lbImg.src = '';
-      document.body.style.overflow = '';
-    }
-
-    function show(idx) {
-      if (!images || images.length === 0) return;
-      if (idx < 0) idx = images.length - 1;
-      if (idx >= images.length) idx = 0;
-      currentIndex = idx;
-      const item = images[idx];
-      lbImg.src = item.url;
-      lbImg.alt = item.title || item.filename || '';
-      lbCaption.textContent = item.title || item.filename || '';
-    }
-
-    // 键盘支持
-    window.addEventListener('keydown', (e) => {
-      if (!lb.classList.contains('show')) return;
-      if (e.key === 'Escape') closeLightbox();
-      if (e.key === 'ArrowLeft') show(currentIndex - 1);
-      if (e.key === 'ArrowRight') show(currentIndex + 1);
     });
+  });
+}
 
-    // 安全输出辅助
-    function escapeHtml(s = '') { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-    function escapeAttr(s = '') { return (''+s).replace(/"/g, '&quot;'); }
+function renderFolderImages(folderIndex, containerEl) {
+  const folder = galleryData[folderIndex];
+  if(!folder.children || folder.children.length===0) return;
 
-    // 启动
-    fetchImages();
-  </script>
+  // 避免重复展开
+  if(containerEl.nextSibling && containerEl.nextSibling.classList.contains('folder-children')) {
+    containerEl.nextSibling.remove();
+    return;
+  }
+
+  const div = document.createElement('div');
+  div.className = 'grid folder-children';
+  div.style.marginTop='6px';
+  div.style.marginBottom='12px';
+  div.innerHTML = folder.children.map((img,i) => `
+    <a href="${img.url}" class="thumb" data-index="${flatImages.indexOf(img)}">
+      <img loading="lazy" src="${img.url}" alt="${img.title}">
+      <div class="caption">${img.title}</div>
+    </a>
+  `).join('');
+  containerEl.parentNode.insertBefore(div, containerEl.nextSibling);
+
+  div.querySelectorAll('.thumb').forEach(el=>{
+    el.addEventListener('click', e=>{
+      e.preventDefault();
+      const idx = +el.dataset.index;
+      openLightbox(idx);
+    });
+  });
+}
+
+function flattenImages() {
+  flatImages = [];
+  galleryData.forEach(item=>{
+    if(item.type==='folder' && item.children) {
+      flatImages.push(...item.children);
+    } else if(item.type==='image') {
+      flatImages.push(item);
+    }
+  });
+}
+
+// Lightbox
+const lb = document.getElementById('lightbox');
+const lbImg = document.getElementById('lbImg');
+const lbCaption = document.getElementById('lbCaption');
+document.getElementById('closeBtn').addEventListener('click', closeLightbox);
+document.getElementById('prevBtn').addEventListener('click', () => show(currentIndex-1));
+document.getElementById('nextBtn').addEventListener('click', () => show(currentIndex+1));
+lb.addEventListener('click', (e)=>{ if(e.target===lb) closeLightbox(); });
+
+function openLightbox(idx){
+  if(idx<0 || idx>=flatImages.length) return;
+  currentIndex = idx;
+  show(currentIndex);
+  lb.classList.add('show');
+  lb.setAttribute('aria-hidden','false');
+  document.body.style.overflow='hidden';
+}
+
+function closeLightbox(){
+  lb.classList.remove('show');
+  lb.setAttribute('aria-hidden','true');
+  lbImg.src='';
+  document.body.style.overflow='';
+}
+
+function show(idx){
+  if(idx<0) idx = flatImages.length-1;
+  if(idx>=flatImages.length) idx = 0;
+  currentIndex = idx;
+  const item = flatImages[idx];
+  lbImg.src = item.url;
+  lbImg.alt = item.title||item.filename||'';
+  lbCaption.textContent = item.title||item.filename||'';
+}
+
+// 键盘支持
+window.addEventListener('keydown',(e)=>{
+  if(!lb.classList.contains('show')) return;
+  if(e.key==='Escape') closeLightbox();
+  if(e.key==='ArrowLeft') show(currentIndex-1);
+  if(e.key==='ArrowRight') show(currentIndex+1);
+});
+
+// 启动
+fetchImages();
+</script>
+
 </body>
 </html>
