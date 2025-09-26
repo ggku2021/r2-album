@@ -1,27 +1,144 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <title>外贸产品相册</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lightgallery-bundle.min.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>相册 / My Album</title>
+  <style>
+    :root{--gap:10px;--bg:#0f1724;--card:#0b1220;--text:#e6eef8}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC","Noto Sans CJK SC";background:var(--bg);color:var(--text)}
+    header{padding:16px;text-align:center}
+    header h1{margin:0;font-size:1.2rem}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--gap);padding:12px;max-width:1200px;margin:0 auto}
+    .thumb{display:block;overflow:hidden;border-radius:8px;background:#111;padding:4px;text-align:center}
+    .thumb img{width:100%;height:160px;object-fit:cover;border-radius:6px;display:block;transition:transform .25s}
+    .thumb:hover img{transform:scale(1.03)}
+    .caption{font-size:0.85rem;padding:6px 4px;text-align:center;color:#cfe6ff}
+    /* Lightbox */
+    .lb{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.85);z-index:999;visibility:hidden;opacity:0;transition:opacity .18s}
+    .lb.show{visibility:visible;opacity:1}
+    .lb img{max-width:94vw;max-height:82vh;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+    .lb .info{position:fixed;left:16px;bottom:16px;color:#dfeefe;font-size:0.95rem}
+    .btn{position:fixed;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.4);border:0;color:#fff;font-size:2rem;padding:6px 10px;border-radius:6px;cursor:pointer}
+    .btn:hover{background:rgba(255,255,255,.08)}
+    .prev{left:10px} .next{right:10px}
+    .close{position:fixed;top:12px;right:12px;background:transparent;border:0;color:#fff;font-size:28px;cursor:pointer}
+    @media (max-width:480px){ .thumb img{height:120px} }
+  </style>
 </head>
 <body>
-  <h1>我的产品相册</h1>
-  <div id="gallery">
-    <a href="images/shoes1.jpg">
-      <img src="images/shoes1.jpg" width="200">
-    </a>
-    <a href="images/shoes2.jpg">
-      <img src="images/shoes2.jpg" width="200">
-    </a>
-    <a href="images/shoes3.jpg">
-      <img src="images/shoes3.jpg" width="200">
-    </a>
+  <header>
+    <h1>相册 / Gallery</h1>
+    <div style="font-size:0.85rem;color:#9fb5d9;margin-top:6px">自动读取 images.json → 点击图片查看大图（键盘 ← → / Esc 支持）</div>
+  </header>
+
+  <main>
+    <div id="gallery" class="grid" aria-live="polite"></div>
+  </main>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lb" role="dialog" aria-hidden="true">
+    <button id="closeBtn" class="close" aria-label="关闭">✕</button>
+    <button id="prevBtn" class="btn prev" aria-label="上一张">‹</button>
+    <img id="lbImg" src="" alt="">
+    <button id="nextBtn" class="btn next" aria-label="下一张">›</button>
+    <div id="lbCaption" class="info"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/lightgallery.umd.min.js"></script>
   <script>
-    lightGallery(document.getElementById('gallery'));
+    // 配置：如果你想用相对路径（同域），把 useCdnUrl = false
+    const useCdnUrl = true; // true -> Action 生成的 url 已是 cdn 链接
+    const jsonPath = 'images.json'; // images.json 在仓库根
+
+    let images = [];
+    let currentIndex = 0;
+
+    async function fetchImages() {
+      try {
+        const res = await fetch(jsonPath, {cache: "no-store"});
+        if (!res.ok) throw new Error('无法读取 images.json: ' + res.status);
+        images = await res.json();
+        renderGallery();
+      } catch (e) {
+        console.error(e);
+        document.getElementById('gallery').innerHTML = '<div style="padding:20px;color:#f88">载入图片失败，请检查 images.json 是否存在并且格式正确。</div>';
+      }
+    }
+
+    function renderGallery() {
+      const container = document.getElementById('gallery');
+      if (!Array.isArray(images) || images.length === 0) {
+        container.innerHTML = '<div style="padding:16px;color:#9fb5d9">相册暂无图片，上传到 images/ 文件夹并触发 workflow 即可。</div>';
+        return;
+      }
+      container.innerHTML = images.map((it, i) => {
+        const thumb = it.thumbnail || it.url;
+        const title = it.title ? escapeHtml(it.title) : '';
+        return `
+          <a href="${escapeAttr(it.url)}" class="thumb" data-index="${i}">
+            <img loading="lazy" src="${escapeAttr(thumb)}" alt="${title}">
+            <div class="caption">${title}</div>
+          </a>
+        `;
+      }).join('');
+      // 绑定点击事件
+      container.querySelectorAll('.thumb').forEach(a => {
+        a.addEventListener('click', e => {
+          e.preventDefault();
+          openLightbox(+a.dataset.index);
+        });
+      });
+    }
+
+    // Lightbox 控制
+    const lb = document.getElementById('lightbox');
+    const lbImg = document.getElementById('lbImg');
+    const lbCaption = document.getElementById('lbCaption');
+    document.getElementById('closeBtn').addEventListener('click', closeLightbox);
+    document.getElementById('prevBtn').addEventListener('click', () => show(currentIndex - 1));
+    document.getElementById('nextBtn').addEventListener('click', () => show(currentIndex + 1));
+    lb.addEventListener('click', (e) => { if (e.target === lb) closeLightbox(); });
+
+    function openLightbox(idx) {
+      currentIndex = idx;
+      show(currentIndex);
+      lb.classList.add('show');
+      lb.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      lb.classList.remove('show');
+      lb.setAttribute('aria-hidden', 'true');
+      lbImg.src = '';
+      document.body.style.overflow = '';
+    }
+
+    function show(idx) {
+      if (!images || images.length === 0) return;
+      if (idx < 0) idx = images.length - 1;
+      if (idx >= images.length) idx = 0;
+      currentIndex = idx;
+      const item = images[idx];
+      lbImg.src = item.url;
+      lbImg.alt = item.title || item.filename || '';
+      lbCaption.textContent = item.title || item.filename || '';
+    }
+
+    // 键盘支持
+    window.addEventListener('keydown', (e) => {
+      if (!lb.classList.contains('show')) return;
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowLeft') show(currentIndex - 1);
+      if (e.key === 'ArrowRight') show(currentIndex + 1);
+    });
+
+    // 安全输出辅助
+    function escapeHtml(s = '') { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function escapeAttr(s = '') { return (''+s).replace(/"/g, '&quot;'); }
+
+    // 启动
+    fetchImages();
   </script>
 </body>
 </html>
