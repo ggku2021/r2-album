@@ -5,84 +5,106 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的 GitHub 图床相册</title>
     <style>
-        /* 基础样式 */
-        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f9; }
-        h1 { color: #333; text-align: center; margin-bottom: 40px; }
+        /* 1. 微信和移动端基础适配 */
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+            margin: 0;
+            padding: 20px 10px; /* 减小两侧边距 */
+            background-color: #f4f4f9; 
+            font-size: 14px; /* 适应移动端标准字体大小 */
+        }
+        h1 { 
+            color: #333; 
+            text-align: center; 
+            margin-bottom: 20px; 
+            font-size: 1.6rem; 
+        }
         
         /* 搜索和分页控件容器 */
         #controls {
             text-align: center;
             margin-bottom: 20px;
             display: flex;
+            flex-wrap: wrap; /* 适配小屏幕换行 */
             justify-content: center;
-            gap: 20px;
+            gap: 10px; /* 减小间距 */
             align-items: center;
         }
         #search-input {
-            padding: 10px;
-            width: 300px;
+            padding: 8px; /* 适应移动端 */
+            width: 80%;
+            max-width: 300px;
             border: 1px solid #ccc;
             border-radius: 4px;
+            font-size: 1rem;
+        }
+        #pagination {
+            flex-grow: 1; /* 占据剩余空间 */
+            display: flex;
+            justify-content: center;
         }
         #pagination button {
-            padding: 8px 15px;
-            margin: 0 5px;
+            padding: 6px 12px;
+            margin: 0 3px;
             border: 1px solid #007bff;
             border-radius: 4px;
             background-color: #fff;
             color: #007bff;
             cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        #pagination button:hover:not(:disabled) {
-            background-color: #007bff;
-            color: #fff;
-        }
-        #pagination button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+            font-size: 0.9rem;
         }
 
-        /* 相册网格 */
+        /* 2. 列表左对齐 */
         #gallery {
             display: flex;
             flex-wrap: wrap;
             gap: 20px;
-            justify-content: center;
+            /* 关键修改：左对齐 */
+            justify-content: flex-start; 
+            max-width: 1200px; /* 限制最大宽度，让左对齐在居中容器内更美观 */
+            margin: 0 auto; /* 容器居中 */
         }
 
         /* 相册/图片项样式 */
         .item-card {
             background-color: #fff;
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* 减小阴影，适应移动端 */
             overflow: hidden;
-            width: 250px; 
+            width: calc(50% - 10px); /* 移动端默认两列 */
+            min-width: 150px;
+            max-width: 250px; /* PC端最大宽度 */
             text-align: center;
             transition: transform 0.2s;
             cursor: pointer;
             height: auto; 
         }
-        .item-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        /* PC端媒体查询：三列以上 */
+        @media (min-width: 768px) {
+            .item-card {
+                width: 250px; /* PC端固定宽度 */
+            }
         }
 
         /* 文件夹（相册）样式 */
         .folder-card {
             background-color: #e0f7fa;
-            padding: 20px;
-            font-size: 1.2em;
+            padding: 10px; 
+            font-size: 1rem;
             font-weight: bold;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 250px;
+            height: 250px; 
         }
         .folder-card::before {
             content: "📁";
-            margin-right: 10px;
-            font-size: 1.5em;
+            margin-right: 5px;
+            font-size: 1.2rem;
+        }
+        .back-button {
+            background-color: #ffcdd2 !important;
+            font-weight: normal !important;
         }
 
         /* 图片容器和图片本身的样式 */
@@ -99,20 +121,17 @@
             object-fit: cover; 
             transition: transform 0.3s ease-in-out;
         }
-        .image-card:hover img {
-            transform: scale(1.05);
-        }
 
         .image-card p {
-            padding: 10px;
+            padding: 8px 5px; /* 适应移动端 */
             margin: 0;
             color: #555;
-            font-size: 0.9em;
-            min-height: 40px; 
+            font-size: 0.85rem; 
+            min-height: 30px; 
             display: flex;
             align-items: center;
             justify-content: center;
-            word-break: break-all; /* 允许长文件名换行 */
+            word-break: break-all;
         }
         
         /* 提示信息 */
@@ -120,6 +139,7 @@
             text-align: center;
             color: #888;
             margin-top: 50px;
+            width: 100%; /* 确保消息居中 */
         }
     </style>
 </head>
@@ -128,7 +148,7 @@
     <h1 id="page-title">相册主页</h1>
     
     <div id="controls">
-        <input type="text" id="search-input" placeholder="按文件名搜索..." />
+        <input type="text" id="search-input" placeholder="全局搜索文件名..." />
         <div id="pagination">
             </div>
     </div>
@@ -144,7 +164,7 @@
         const GITHUB_REPO_NAME = 'r2-album'; 
         const GITHUB_BRANCH = 'main'; 
         const BASE_PATH = 'img'; 
-        const ITEMS_PER_PAGE = 12; // 👈 设定每页显示的项目数量 (文件夹+图片)
+        const ITEMS_PER_PAGE = 12; // 每页显示的项目数量 (文件夹+图片)
         // =======================================================
 
         const gallery = document.getElementById('gallery');
@@ -154,10 +174,12 @@
         const paginationContainer = document.getElementById('pagination');
 
         // 全局状态变量
-        let currentPath = BASE_PATH; // 当前路径
-        let allItemsCache = []; // 当前文件夹的所有项目缓存
-        let currentItems = []; // 当前页面的项目 (经过搜索过滤)
-        let currentPage = 1; // 当前页码
+        let currentPath = BASE_PATH;
+        let folderItemsCache = []; // 当前文件夹的项目缓存 (用于正常导航)
+        let globalImageCache = []; // 3. 全局图片缓存 (用于全局搜索)
+        let currentItems = []; // 当前页面的项目 (经过搜索/分页过滤)
+        let currentPage = 1;
+        let isSearching = false; // 是否处于搜索模式
 
         /* --- API 和路径函数 --- */
 
@@ -175,19 +197,63 @@
             return lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') || lowerName.endsWith('.png') || lowerName.endsWith('.gif') || lowerName.endsWith('.webp');
         }
 
+        /* --- 全局搜索加载 (Recursive Load) --- */
+
+        /**
+         * 递归加载所有子文件夹的图片，并扁平化存储在 globalImageCache 中。
+         */
+        async function loadGlobalImageCache(path = BASE_PATH) {
+            try {
+                const response = await fetch(getContentApiUrl(path));
+                if (!response.ok) {
+                     // 遇到 API 限制或 404，直接返回空数组
+                    console.warn(`无法加载路径: ${path}. 状态: ${response.status}`);
+                    return [];
+                }
+                const data = await response.json();
+                let images = [];
+
+                for (const item of data) {
+                    if (item.type === 'file' && isImage(item.name)) {
+                        // 存储文件信息 (包含完整路径)
+                        images.push({ name: item.name, path: item.path, type: 'file' });
+                    } else if (item.type === 'dir') {
+                        // 递归调用
+                        const subImages = await loadGlobalImageCache(item.path);
+                        images = images.concat(subImages);
+                    }
+                }
+                return images;
+            } catch (error) {
+                console.error("全局加载失败:", error);
+                return [];
+            }
+        }
+        
         /* --- 渲染逻辑 --- */
 
         /**
          * 主渲染函数：加载数据并调用本地渲染
          */
         async function loadAndRenderGallery(path) {
+            // 重置搜索状态和页码
+            isSearching = false;
+            searchInput.value = '';
             currentPath = path;
-            currentPage = 1; // 切换路径，重置到第一页
+            currentPage = 1;
+
             pageTitle.textContent = '正在加载...';
             gallery.innerHTML = '';
             message.textContent = '正在加载相册内容...';
             
             try {
+                // 如果是第一次进入根目录，开始全局缓存
+                if (path === BASE_PATH && globalImageCache.length === 0) {
+                    message.textContent = '首次加载，正在构建全局搜索索引...';
+                    globalImageCache = await loadGlobalImageCache(BASE_PATH);
+                    message.textContent = '正在加载相册内容...';
+                }
+
                 const response = await fetch(getContentApiUrl(path));
                 if (!response.ok) {
                     throw new Error(`GitHub API 错误: ${response.status} ${response.statusText}`);
@@ -196,22 +262,22 @@
                 
                 if (data.length === 0) {
                     message.textContent = '此相册为空。';
-                    allItemsCache = [];
+                    folderItemsCache = [];
                     renderCurrentPage();
                     return;
                 }
 
-                // 缓存所有数据
-                allItemsCache = data;
+                // 缓存当前文件夹数据
+                folderItemsCache = data;
                 message.style.display = 'none';
 
-                // 首次加载后，触发本地渲染
+                // 触发本地渲染
                 renderCurrentPage(); 
                 
             } catch (error) {
                 console.error("加载相册失败:", error);
-                message.textContent = `加载失败，请检查配置和网络。错误：${error.message}`;
-                allItemsCache = [];
+                message.textContent = `加载失败，请检查配置或 API 访问限制。错误：${error.message}`;
+                folderItemsCache = [];
                 renderCurrentPage();
             }
         }
@@ -220,62 +286,65 @@
          * 本地渲染函数：处理搜索和分页
          */
         function renderCurrentPage() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            isSearching = !!searchTerm;
+
             // 1. 设置页面标题
             const isRoot = currentPath === BASE_PATH;
             const folderName = currentPath.split('/').pop();
-            pageTitle.textContent = isRoot ? '相册主页' : `相册：${folderName}`;
+            pageTitle.textContent = isSearching ? `搜索结果：${searchTerm}` : (isRoot ? '相册主页' : `相册：${folderName}`);
 
-            // 2. 处理搜索过滤
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            let filteredItems = allItemsCache;
+            let filteredItems = [];
 
-            if (searchTerm) {
-                // 仅在搜索时过滤，否则使用全部缓存数据
-                filteredItems = allItemsCache.filter(item => 
+            if (isSearching) {
+                // 3. 搜索模式：从全局图片缓存中查找
+                filteredItems = globalImageCache.filter(item => 
                     item.name.toLowerCase().includes(searchTerm)
                 );
+                // 搜索模式下只显示图片，不显示文件夹
+            } else {
+                // 4. 正常模式：使用当前文件夹缓存
+                
+                // 文件夹优先
+                const folders = folderItemsCache.filter(item => item.type === 'dir');
+                const files = folderItemsCache.filter(item => item.type === 'file' && isImage(item.name));
+                filteredItems = [...folders, ...files];
             }
-
-            // 3. 区分文件夹和文件
-            const folders = filteredItems.filter(item => item.type === 'dir');
-            const files = filteredItems.filter(item => item.type === 'file' && isImage(item.name));
             
-            currentItems = [...folders, ...files]; // 文件夹优先展示
+            currentItems = filteredItems;
 
-            // 4. 计算分页
+            // 5. 计算分页
             const totalItems = currentItems.length;
             const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
-            // 确保当前页码有效
             if (currentPage > totalPages && totalPages > 0) {
                 currentPage = totalPages;
             } else if (totalPages === 0) {
                 currentPage = 1;
             }
 
-            // 5. 确定当前页面的内容
             const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
             const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
             const itemsOnPage = currentItems.slice(startIndex, endIndex);
 
-            // 6. 清空画廊并渲染
+            // 6. 渲染内容
             gallery.innerHTML = '';
             if (totalItems === 0) {
-                 gallery.innerHTML = `<div id="message" style="display:block;">${searchTerm ? '没有找到匹配的文件。' : '此相册为空。'}</div>`;
+                 gallery.innerHTML = `<div id="message" style="display:block; width:100%;">未找到匹配的项目。</div>`;
             } else {
                  message.style.display = 'none';
             }
             
-            // 渲染返回上一级按钮
-            if (currentPath !== BASE_PATH) {
+            // 渲染返回上一级按钮 (非搜索模式下)
+            if (!isSearching && currentPath !== BASE_PATH) {
                 const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
-                const backButton = createFolderCard('... 返回上一级', parentPath, true); // 标记为返回按钮
+                const backButton = createFolderCard('... 返回上一级', parentPath, true); 
                 gallery.appendChild(backButton);
             }
 
             // 渲染当前页面的项目
             itemsOnPage.forEach(item => {
-                if (item.type === 'dir') {
+                if (item.type === 'dir' && !isSearching) { // 搜索模式下不显示文件夹
                     gallery.appendChild(createFolderCard(item.name, item.path));
                 } else if (item.type === 'file') {
                     gallery.appendChild(createImageCard(item.name, item.path));
@@ -297,7 +366,7 @@
             const prevBtn = document.createElement('button');
             prevBtn.textContent = '上一页';
             prevBtn.disabled = currentPage === 1;
-            prevBtn.onclick = () => { currentPage--; renderCurrentPage(); window.scrollTo(0, 0); }; // 回到顶部
+            prevBtn.onclick = () => { currentPage--; renderCurrentPage(); window.scrollTo(0, 0); }; 
             
             const pageInfo = document.createElement('span');
             pageInfo.textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页`;
@@ -307,25 +376,20 @@
             const nextBtn = document.createElement('button');
             nextBtn.textContent = '下一页';
             nextBtn.disabled = currentPage === totalPages;
-            nextBtn.onclick = () => { currentPage++; renderCurrentPage(); window.scrollTo(0, 0); }; // 回到顶部
+            nextBtn.onclick = () => { currentPage++; renderCurrentPage(); window.scrollTo(0, 0); }; 
 
             paginationContainer.appendChild(prevBtn);
             paginationContainer.appendChild(pageInfo);
             paginationContainer.appendChild(nextBtn);
         }
 
-        /* --- 元素创建函数 (保持稳定) --- */
+        /* --- 元素创建函数 --- */
 
         function createFolderCard(name, path, isBackButton = false) {
             const card = document.createElement('div');
-            card.className = 'item-card folder-card';
+            card.className = `item-card folder-card ${isBackButton ? 'back-button' : ''}`;
             card.textContent = name;
             card.onclick = () => loadAndRenderGallery(path);
-            if (isBackButton) {
-                 card.style.backgroundColor = '#ffcdd2'; 
-                 card.style.fontWeight = 'normal';
-                 card.style.minHeight = '250px'; // 确保返回按钮高度
-            }
             return card;
         }
 
@@ -341,6 +405,7 @@
             img.alt = name;
             
             const p = document.createElement('p');
+            // 如果处于搜索模式，显示完整路径，但这里我们只显示文件名保持简洁
             p.textContent = name; 
 
             imgContainer.appendChild(img);
@@ -355,9 +420,14 @@
         /* --- 事件监听 --- */
 
         // 监听搜索框输入，实时触发本地渲染
+        let searchTimeout;
         searchInput.addEventListener('input', () => {
-            currentPage = 1; // 搜索时重置到第一页
-            renderCurrentPage();
+            clearTimeout(searchTimeout);
+            // 设置一个延迟 (例如 300ms)，避免用户每输入一个字就立即渲染
+            searchTimeout = setTimeout(() => {
+                currentPage = 1; // 搜索时重置到第一页
+                renderCurrentPage();
+            }, 300); 
         });
 
         // 页面初始化时加载
