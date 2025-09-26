@@ -21,26 +21,28 @@
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             overflow: hidden;
-            width: 300px;
+            width: 250px; /* 统一卡片宽度 */
             text-align: center;
             transition: transform 0.2s;
             cursor: pointer;
+            /* 关键：让卡片高度由内容决定，避免底部留白 */
+            height: auto; 
         }
         .item-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
         }
 
-        /* 文件夹（相册）样式 */
+        /* 文件夹（相册）样式：保持统一性 */
         .folder-card {
-            background-color: #e0f7fa; /* 浅蓝色背景 */
+            background-color: #e0f7fa;
             padding: 20px;
             font-size: 1.2em;
             font-weight: bold;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 150px; /* 统一高度 */
+            height: 250px; /* 让文件夹卡片高度和图片显示区域一致 */
         }
         .folder-card::before {
             content: "📁";
@@ -48,23 +50,39 @@
             font-size: 1.5em;
         }
 
-        /* 图片样式 */
+        /* 🏆 图片样式核心优化 🏆 */
+        .image-card {
+            /* 确保图片卡片容器有固定的高度来裁剪图片 */
+            /* 250px 宽度已设置在 .item-card */
+            overflow: hidden; 
+            /* 调整卡片本身的高度，以适应图片和文字 */
+            height: auto; 
+        }
+
         .image-card img {
             width: 100%;
-            height: auto;
+            height: 250px; /* 强制所有图片高度一致，这是关键 */
             display: block;
-            object-fit: cover;
+            
+            /* 核心属性：保证图片内容填满 250px 高度区域，多余部分裁剪 */
+            object-fit: cover; 
+            
+            transition: transform 0.3s ease-in-out;
         }
+        .image-card:hover img {
+            transform: scale(1.05);
+        }
+
         .image-card p {
             padding: 10px;
             margin: 0;
             color: #555;
             font-size: 0.9em;
-        }
-
-        /* 瀑布流布局（简单实现，图片大小不一时效果更佳） */
-        .image-card {
-            width: 250px; /* 图片宽度略小 */
+            /* 确保文字部分紧凑和居中 */
+            min-height: 40px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         /* 提示信息 */
@@ -84,12 +102,11 @@
     
     <script>
         // =======================================================
-        // 🚀 配置信息已根据您的路径设置
+        // 🚀 配置信息（保持不变，确保稳定性）
         // =======================================================
         const GITHUB_USERNAME = 'ggku2021'; 
         const GITHUB_REPO_NAME = 'r2-album'; 
         const GITHUB_BRANCH = 'main'; 
-        // 您的图片起始目录，对应路径中的 /img
         const BASE_PATH = 'img'; 
         // =======================================================
 
@@ -97,37 +114,20 @@
         const message = document.getElementById('message');
         const pageTitle = document.getElementById('page-title');
 
-        /**
-         * 获取 GitHub 仓库内容的 API URL
-         */
         function getContentApiUrl(path) {
             return `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}/contents/${path}?ref=${GITHUB_BRANCH}`;
         }
 
-        /**
-         * 生成图片 CDN 链接（使用 jsDelivr 加速）
-         */
         function getCdnUrl(path) {
-            // 确保路径不以 / 开头
             const cleanPath = path.startsWith('/') ? path.substring(1) : path; 
             return `https://cdn.jsdelivr.net/gh/${GITHUB_USERNAME}/${GITHUB_REPO_NAME}@${GITHUB_BRANCH}/${cleanPath}`;
         }
 
-        /**
-         * 判断是否为图片文件
-         */
         function isImage(name) {
             const lowerName = name.toLowerCase();
-            return lowerName.endsWith('.jpg') || 
-                   lowerName.endsWith('.jpeg') || 
-                   lowerName.endsWith('.png') || 
-                   lowerName.endsWith('.gif') || 
-                   lowerName.endsWith('.webp');
+            return lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') || lowerName.endsWith('.png') || lowerName.endsWith('.gif') || lowerName.endsWith('.webp');
         }
 
-        /**
-         * 渲染相册内容
-         */
         async function renderGallery(currentPath) {
             const isRoot = currentPath === BASE_PATH;
             const folderName = currentPath.split('/').pop();
@@ -149,20 +149,17 @@
 
                 message.style.display = 'none';
 
-                // 1. 渲染返回按钮 (如果不是 BASE_PATH 根目录)
                 if (currentPath !== BASE_PATH) {
                     const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
                     const backButton = createFolderCard('... 返回上一级', parentPath);
-                    backButton.style.backgroundColor = '#ffcdd2'; // 红色提示
+                    backButton.style.backgroundColor = '#ffcdd2'; 
                     gallery.appendChild(backButton);
                 }
 
-                // 2. 渲染文件夹 (作为子相册)
                 data.filter(item => item.type === 'dir').forEach(folder => {
                     gallery.appendChild(createFolderCard(folder.name, folder.path));
                 });
 
-                // 3. 渲染图片文件
                 data.filter(item => item.type === 'file' && isImage(item.name)).forEach(file => {
                     gallery.appendChild(createImageCard(file.name, file.path));
                 });
@@ -173,20 +170,15 @@
             }
         }
 
-        /**
-         * 创建文件夹卡片元素
-         */
         function createFolderCard(name, path) {
             const card = document.createElement('div');
             card.className = 'item-card folder-card';
             card.textContent = name;
-            card.onclick = () => renderGallery(path); // 点击进入下一级
+            card.onclick = () => renderGallery(path);
             return card;
         }
 
-        /**
-         * 创建图片卡片元素
-         */
+        // 保持使用原始结构，避免运行时错误
         function createImageCard(name, path) {
             const card = document.createElement('div');
             card.className = 'item-card image-card';
@@ -195,14 +187,12 @@
             img.src = getCdnUrl(path);
             img.alt = name;
             
-            // 简单添加图片文件名作为描述
             const p = document.createElement('p');
             p.textContent = name; 
 
             card.appendChild(img);
             card.appendChild(p);
 
-            // 点击新窗口打开大图
             card.onclick = () => window.open(getCdnUrl(path), '_blank'); 
 
             return card;
