@@ -1,72 +1,27 @@
-name: Generate images.json
-
-on:
-  push:
-    paths:
-      - 'img/**'
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Generate images.json with folders and root images
-        run: |
-          node -e "
-          const fs = require('fs');
-          const path = require('path');
-
-          const IMG_DIR = 'img';
-          const baseUrl = 'https://raw.githubusercontent.com/ggku2021/r2-album/main/';
-
-          const result = { root: [], folders: [] };
-
-          fs.readdirSync(IMG_DIR).forEach(file => {
-            const fullPath = path.join(IMG_DIR, file);
-            if (fs.statSync(fullPath).isDirectory()) {
-              // 文件夹
-              const images = [];
-              fs.readdirSync(fullPath).forEach(f => {
-                if (/\.(jpg|jpeg|png|gif)$/i.test(f)) {
-                  images.push({
-                    filename: f,
-                    url: baseUrl + path.join(IMG_DIR, file, f).replace(/\\/g,'/'),
-                    title: f
-                  });
-                }
-              });
-              if (images.length > 0) {
-                result.folders.push({
-                  folder: file,
-                  cover: images[0].url,
-                  images: images
-                });
-              }
-            } else if (/\.(jpg|jpeg|png|gif)$/i.test(file)) {
-              // 根目录图片
-              result.root.push({
-                filename: file,
-                url: baseUrl + file,
-                title: file
-              });
-            }
-          });
-
-          fs.writeFileSync('images.json', JSON.stringify(result, null, 2));
-          console.log('images.json generated:', result);
-          "
-
-      - name: Commit and push images.json
-        run: |
-          git config user.name "ggku2021"
-          git config user.email "ggku@qq.com"
-          git add images.json
-          git commit -m '自动生成 images.json' || echo 'No changes to commit'
-          git push origin main
+{
+  "root": [
+    {"filename": "封面.jpg", "url": "https://raw.githubusercontent.com/ggku2021/r2-album/main/img/封面.jpg", "title": "封面", "path": "封面.jpg"}
+  ],
+  "folders": [
+    {
+      "folder": "2024",
+      "path": "2024",
+      "cover": "https://raw.githubusercontent.com/ggku2021/r2-album/main/img/2024/一月.jpg",
+      "images": [
+        {"filename": "一月.jpg", "url": "https://raw.githubusercontent.com/ggku2021/r2-album/main/img/2024/一月.jpg", "title": "一月", "path": "2024/一月.jpg"}
+      ],
+      "subfolders": [
+        {
+          "folder": "旅行",
+          "path": "2024/旅行",
+          "cover": "https://raw.githubusercontent.com/ggku2021/r2-album/main/img/2024/旅行/海边.jpg",
+          "images": [
+            {"filename": "海边.jpg", "url": "https://raw.githubusercontent.com/ggku2021/r2-album/main/img/2024/旅行/海边.jpg", "title": "海边", "path": "2024/旅行/海边.jpg"}
+          ],
+          "subfolders": []
+        }
+      ]
+    }
+  ],
+  "generatedAt": "2025-09-26T12:00:00.000Z"
+}
