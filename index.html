@@ -1,164 +1,141 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>相册 / My Album</title>
-  <style>
-    :root{--gap:10px;--bg:#0f1724;--card:#0b1220;--text:#e6eef8}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC","Noto Sans CJK SC";background:var(--bg);color:var(--text)}
-    header{padding:16px;text-align:center}
-    header h1{margin:0;font-size:1.2rem}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--gap);padding:12px;max-width:1200px;margin:0 auto}
-    .thumb{display:block;overflow:hidden;border-radius:8px;background:#111;padding:4px;text-align:center}
-    .thumb img{width:100%;height:160px;object-fit:cover;border-radius:6px;display:block;transition:transform .25s}
-    .thumb:hover img{transform:scale(1.03)}
-    .caption{font-size:0.85rem;padding:6px 4px;text-align:center;color:#cfe6ff}
-    /* Lightbox */
-    .lb{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.85);z-index:999;visibility:hidden;opacity:0;transition:opacity .18s}
-    .lb.show{visibility:visible;opacity:1}
-    .lb img{max-width:94vw;max-height:82vh;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.6)}
-    .lb .info{position:fixed;left:16px;bottom:16px;color:#dfeefe;font-size:0.95rem}
-    .btn{position:fixed;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.4);border:0;color:#fff;font-size:2rem;padding:6px 10px;border-radius:6px;cursor:pointer}
-    .btn:hover{background:rgba(255,255,255,.08)}
-    .prev{left:10px} .next{right:10px}
-    .close{position:fixed;top:12px;right:12px;background:transparent;border:0;color:#fff;font-size:28px;cursor:pointer}
-    @media (max-width:480px){ .thumb img{height:120px} }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>相册 / My Album</title>
+<style>
+:root{--gap:10px;--bg:#0f1724;--card:#0b1220;--text:#e6eef8}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC","Noto Sans CJK SC";background:var(--bg);color:var(--text)}
+header{padding:16px;text-align:center}
+header h1{margin:0;font-size:1.2rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--gap);padding:12px;max-width:1200px;margin:0 auto}
+.thumb{display:block;overflow:hidden;border-radius:8px;background:#111;padding:4px;text-align:center;cursor:pointer}
+.thumb img{width:100%;height:160px;object-fit:cover;border-radius:6px;display:block;transition:transform .25s}
+.thumb:hover img{transform:scale(1.03)}
+.caption{font-size:0.85rem;padding:6px 4px;text-align:center;color:#cfe6ff}
+/* Lightbox */
+.lb{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.85);z-index:999;visibility:hidden;opacity:0;transition:opacity .18s}
+.lb.show{visibility:visible;opacity:1}
+.lb img{max-width:94vw;max-height:82vh;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+.lb .info{position:fixed;left:16px;bottom:16px;color:#dfeefe;font-size:0.95rem}
+.btn{position:fixed;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.4);border:0;color:#fff;font-size:2rem;padding:6px 10px;border-radius:6px;cursor:pointer}
+.btn:hover{background:rgba(255,255,255,.08)}
+.prev{left:10px} .next{right:10px}
+.close{position:fixed;top:12px;right:12px;background:transparent;border:0;color:#fff;font-size:28px;cursor:pointer}
+@media (max-width:480px){ .thumb img{height:120px} }
+</style>
 </head>
 <body>
-  <header>
-    <h1>相册 / Gallery</h1>
-    <div style="font-size:0.85rem;color:#9fb5d9;margin-top:6px">自动读取 images.json → 点击图片查看大图（键盘 ← → / Esc 支持）</div>
-  </header>
+<header>
+  <h1>相册 / Gallery</h1>
+  <div style="font-size:0.85rem;color:#9fb5d9;margin-top:6px">自动读取 images.json → 点击图片查看大图（键盘 ← → / Esc 支持）</div>
+  <div id="backBtn" style="font-size:0.85rem;color:#f88;margin-top:6px;display:none;cursor:pointer">← 返回首页</div>
+</header>
 
-  <main>
-    <div id="gallery" class="grid" aria-live="polite"></div>
-  </main>
+<main>
+  <div id="gallery" class="grid" aria-live="polite"></div>
+</main>
 
-  <!-- Lightbox -->
-  <div id="lightbox" class="lb" role="dialog" aria-hidden="true">
-    <button id="closeBtn" class="close" aria-label="关闭">✕</button>
-    <button id="prevBtn" class="btn prev" aria-label="上一张">‹</button>
-    <img id="lbImg" src="" alt="">
-    <button id="nextBtn" class="btn next" aria-label="下一张">›</button>
-    <div id="lbCaption" class="info"></div>
-  </div>
+<!-- Lightbox -->
+<div id="lightbox" class="lb" role="dialog" aria-hidden="true">
+  <button id="closeBtn" class="close" aria-label="关闭">✕</button>
+  <button id="prevBtn" class="btn prev" aria-label="上一张">‹</button>
+  <img id="lbImg" src="" alt="">
+  <button id="nextBtn" class="btn next" aria-label="下一张">›</button>
+  <div id="lbCaption" class="info"></div>
+</div>
 
-  <script>
-const jsonPath = 'images.json'; // images.json 在仓库根
-let galleryData = []; // 存储根目录图片和文件夹
-let flatImages = [];  // 扁平化所有图片，用于 Lightbox
-let currentIndex = 0;
+<script>
+const jsonPath = 'images.json';
+let rootImages = [], folders = [];
+let currentFolder = null, currentImages = [], currentIndex = 0;
 
-async function fetchImages() {
-  try {
-    const res = await fetch(jsonPath, {cache: "no-store"});
+async function fetchImages(){
+  try{
+    const res = await fetch(jsonPath, {cache:'no-store'});
     if(!res.ok) throw new Error('无法读取 images.json: ' + res.status);
-    galleryData = await res.json();
+    const data = await res.json();
+    rootImages = data.root || [];
+    folders = data.folders || [];
     renderGallery();
-    flattenImages();
-  } catch(e) {
+  }catch(e){
     console.error(e);
     document.getElementById('gallery').innerHTML = '<div style="padding:20px;color:#f88">载入图片失败，请检查 images.json 是否存在并且格式正确。</div>';
   }
 }
 
-function renderGallery() {
+function renderGallery(){
   const container = document.getElementById('gallery');
-  if(!Array.isArray(galleryData) || galleryData.length===0) {
-    container.innerHTML = '<div style="padding:16px;color:#9fb5d9">相册暂无图片，上传到 images/ 文件夹并触发 workflow 即可。</div>';
-    return;
+  container.innerHTML = '';
+
+  if(currentFolder){
+    // 当前显示文件夹
+    currentImages.forEach((it,i)=>{
+      container.innerHTML += `
+        <a href="#" class="thumb" data-index="${i}">
+          <img src="${it.url}" alt="${it.title}">
+          <div class="caption">${it.title}</div>
+        </a>`;
+    });
+    document.getElementById('backBtn').style.display='block';
+  }else{
+    // 首页显示根目录图片
+    rootImages.forEach((it,i)=>{
+      container.innerHTML += `
+        <a href="#" class="thumb" data-index-root="${i}">
+          <img src="${it.url}" alt="${it.title}">
+          <div class="caption">${it.title}</div>
+        </a>`;
+    });
+    // 显示文件夹
+    folders.forEach((f,i)=>{
+      container.innerHTML += `
+        <a href="#" class="thumb folder" data-folder-index="${i}">
+          <img src="${f.cover}" alt="${f.folder}">
+          <div class="caption">${f.folder}</div>
+        </a>`;
+    });
+    document.getElementById('backBtn').style.display='none';
   }
 
-  container.innerHTML = galleryData.map((item,i) => {
-    if(item.type==='folder') {
-      return `
-        <div class="thumb folder" data-index="${i}">
-          <img loading="lazy" src="${item.cover}" alt="${item.title}">
-          <div class="caption">📁 ${item.title}</div>
-        </div>
-      `;
-    } else {
-      return `
-        <a href="${item.url}" class="thumb" data-index="${i}">
-          <img loading="lazy" src="${item.url}" alt="${item.title}">
-          <div class="caption">${item.title}</div>
-        </a>
-      `;
-    }
-  }).join('');
-
-  // 绑定事件
-  container.querySelectorAll('.thumb').forEach(el => {
-    el.addEventListener('click', e => {
-      const idx = +el.dataset.index;
-      const item = galleryData[idx];
-      if(item.type==='folder') {
-        // 展开文件夹
-        renderFolderImages(idx, el);
-      } else {
-        e.preventDefault();
-        openLightbox(flatImages.indexOf(item));
+  container.querySelectorAll('.thumb').forEach(a=>{
+    a.addEventListener('click', e=>{
+      e.preventDefault();
+      if(a.classList.contains('folder')){
+        const idx = +a.dataset.folderIndex;
+        openFolder(idx);
+      }else{
+        const idx = currentFolder ? +a.dataset.index : +a.dataset.indexRoot;
+        openLightbox(idx);
       }
     });
   });
 }
 
-function renderFolderImages(folderIndex, containerEl) {
-  const folder = galleryData[folderIndex];
-  if(!folder.children || folder.children.length===0) return;
-
-  // 避免重复展开
-  if(containerEl.nextSibling && containerEl.nextSibling.classList.contains('folder-children')) {
-    containerEl.nextSibling.remove();
-    return;
-  }
-
-  const div = document.createElement('div');
-  div.className = 'grid folder-children';
-  div.style.marginTop='6px';
-  div.style.marginBottom='12px';
-  div.innerHTML = folder.children.map((img,i) => `
-    <a href="${img.url}" class="thumb" data-index="${flatImages.indexOf(img)}">
-      <img loading="lazy" src="${img.url}" alt="${img.title}">
-      <div class="caption">${img.title}</div>
-    </a>
-  `).join('');
-  containerEl.parentNode.insertBefore(div, containerEl.nextSibling);
-
-  div.querySelectorAll('.thumb').forEach(el=>{
-    el.addEventListener('click', e=>{
-      e.preventDefault();
-      const idx = +el.dataset.index;
-      openLightbox(idx);
-    });
-  });
+function openFolder(idx){
+  currentFolder = folders[idx].folder;
+  currentImages = folders[idx].images;
+  renderGallery();
 }
 
-function flattenImages() {
-  flatImages = [];
-  galleryData.forEach(item=>{
-    if(item.type==='folder' && item.children) {
-      flatImages.push(...item.children);
-    } else if(item.type==='image') {
-      flatImages.push(item);
-    }
-  });
-}
+document.getElementById('backBtn').addEventListener('click', ()=>{
+  currentFolder = null;
+  currentImages = [];
+  renderGallery();
+});
 
-// Lightbox
-const lb = document.getElementById('lightbox');
-const lbImg = document.getElementById('lbImg');
-const lbCaption = document.getElementById('lbCaption');
+// Lightbox 控制
+const lb=document.getElementById('lightbox');
+const lbImg=document.getElementById('lbImg');
+const lbCaption=document.getElementById('lbCaption');
 document.getElementById('closeBtn').addEventListener('click', closeLightbox);
-document.getElementById('prevBtn').addEventListener('click', () => show(currentIndex-1));
-document.getElementById('nextBtn').addEventListener('click', () => show(currentIndex+1));
-lb.addEventListener('click', (e)=>{ if(e.target===lb) closeLightbox(); });
+document.getElementById('prevBtn').addEventListener('click', ()=>show(currentIndex-1));
+document.getElementById('nextBtn').addEventListener('click', ()=>show(currentIndex+1));
+lb.addEventListener('click', e=>{if(e.target===lb) closeLightbox();});
 
 function openLightbox(idx){
-  if(idx<0 || idx>=flatImages.length) return;
-  currentIndex = idx;
+  currentIndex=idx;
   show(currentIndex);
   lb.classList.add('show');
   lb.setAttribute('aria-hidden','false');
@@ -173,26 +150,26 @@ function closeLightbox(){
 }
 
 function show(idx){
-  if(idx<0) idx = flatImages.length-1;
-  if(idx>=flatImages.length) idx = 0;
-  currentIndex = idx;
-  const item = flatImages[idx];
-  lbImg.src = item.url;
-  lbImg.alt = item.title||item.filename||'';
-  lbCaption.textContent = item.title||item.filename||'';
+  const imgs = currentFolder ? currentImages : rootImages;
+  if(!imgs || imgs.length===0) return;
+  if(idx<0) idx=imgs.length-1;
+  if(idx>=imgs.length) idx=0;
+  currentIndex=idx;
+  const item=imgs[idx];
+  lbImg.src=item.url;
+  lbImg.alt=item.title||item.filename||'';
+  lbCaption.textContent=item.title||item.filename||'';
 }
 
 // 键盘支持
-window.addEventListener('keydown',(e)=>{
+window.addEventListener('keydown', e=>{
   if(!lb.classList.contains('show')) return;
   if(e.key==='Escape') closeLightbox();
   if(e.key==='ArrowLeft') show(currentIndex-1);
   if(e.key==='ArrowRight') show(currentIndex+1);
 });
 
-// 启动
 fetchImages();
 </script>
-
 </body>
 </html>
